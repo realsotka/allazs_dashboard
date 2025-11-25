@@ -1,201 +1,18 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8" />
-  <title>ALLAZS Dashboard</title>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Стилі -->
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      background-color: #0b0b0f;
-      color: #f5f5f5;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 32px;
-    }
-
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      opacity: 0.7;
-      margin-bottom: 24px;
-    }
-
-    .layout {
-      max-width: 1200px;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .card {
-      background: linear-gradient(135deg, #14141b, #111117);
-      padding: 18px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    }
-
-    .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      opacity: 0.6;
-      margin-bottom: 6px;
-      letter-spacing: 0.07em;
-    }
-
-    .value {
-      font-size: 24px;
-      font-weight: 700;
-    }
-
-    .section {
-      background: #101018;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.06);
-      padding: 18px;
-      margin-bottom: 24px;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    select {
-      background: #181824;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #f5f5f5;
-      padding: 6px 10px;
-      font-size: 13px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    th, td {
-      padding: 8px 10px;
-      text-align: left;
-    }
-
-    thead {
-      background: #181824;
-    }
-
-    tbody tr:nth-child(even) {
-      background: rgba(255,255,255,0.02);
-    }
-
-    tbody tr:hover {
-      background: rgba(255,255,255,0.06);
-    }
-  </style>
-</head>
-
-<body>
-  <div class="layout">
-    <h1>ALLAZS Dashboard</h1>
-    <div class="subtitle">Панель ефективності менеджерів. Зараз тут тестові дані.</div>
-
-    <!-- Картки з метриками -->
-    <div class="cards">
-      <div class="card">
-        <div class="label">Усього літрів (місяць)</div>
-        <div class="value" id="total-liters">–</div>
-      </div>
-      <div class="card">
-        <div class="label">Усього угод</div>
-        <div class="value" id="total-deals">–</div>
-      </div>
-      <div class="card">
-        <div class="label">Середній літраж на угоду</div>
-        <div class="value" id="avg-liters-per-deal">–</div>
-      </div>
-      <div class="card">
-        <div class="label">Кількість менеджерів</div>
-        <div class="value" id="manager-count">–</div>
-      </div>
-    </div>
-
-    <!-- Таблиця менеджерів -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-title">Рейтинг менеджерів</div>
-        <select id="sort-select">
-          <option value="liters">За літрами</option>
-          <option value="deals">За угодами</option>
-          <option value="conversion">За конверсією</option>
-        </select>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Менеджер</th>
-            <th>Офіс</th>
-            <th>Дзвінки</th>
-            <th>Угоди</th>
-            <th>Конверсія</th>
-            <th>Літри</th>
-          </tr>
-        </thead>
-        <tbody id="manager-table-body"></tbody>
-      </table>
-    </div>
-
-    <!-- Графік -->
-    <div class="section">
-      <div class="section-title" style="margin-bottom: 12px;">Літри по менеджерах</div>
-      <canvas id="liters-chart" height="120"></canvas>
-    </div>
-  </div>
-
-  <!-- JS -->
   <script>
-    // Поки що тестові дані — потім сюди підставимо Google Sheets
-    const MANAGERS_DATA = [
-      { name: "Іван",     office: "Житомир", calls: 120, deals: 10, liters: 4500 },
-      { name: "Марія",    office: "Київ",    calls: 95,  deals: 9,  liters: 4100 },
-      { name: "Олег",     office: "Львів",   calls: 80,  deals: 6,  liters: 3100 },
-      { name: "Андрій",   office: "Житомир", calls: 70,  deals: 5,  liters: 2600 },
-      { name: "Світлана", office: "Київ",    calls: 110, deals: 8,  liters: 3800 }
-    ];
+    // 👉 Твій реальний endpoint
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzmZ2qzxAT7aY1QIGUkxtpxMDxMpwWWHaJ3XUcVc5GEPaBDBTfNKM0GndvFqnYCxbhv/exec';
 
     let currentSort = "liters";
     let litersChartInstance = null;
+    let MANAGERS_DATA = [];
 
     function formatNumber(num) {
       return num.toLocaleString("uk-UA");
     }
 
     function calcMetrics(data) {
-      const totalLiters = data.reduce((sum, m) => sum + m.liters, 0);
-      const totalDeals = data.reduce((sum, m) => sum + m.deals, 0);
+      const totalLiters = data.reduce((sum, m) => sum + (m.liters || 0), 0);
+      const totalDeals = data.reduce((sum, m) => sum + (m.deals || 0), 0);
       const avgLitersPerDeal = totalDeals > 0 ? totalLiters / totalDeals : 0;
       const managerCount = data.length;
       return { totalLiters, totalDeals, avgLitersPerDeal, managerCount };
@@ -217,18 +34,20 @@
       document.getElementById("manager-count").textContent = managerCount;
     }
 
+    function mConv(m) {
+      const calls = m.calls || 0;
+      const deals = m.deals || 0;
+      return calls > 0 ? deals / calls : 0;
+    }
+
     function getSortedData(data, sortKey) {
       const arr = [...data];
       if (sortKey === "liters") {
-        arr.sort((a, b) => b.liters - a.liters);
+        arr.sort((a, b) => (b.liters || 0) - (a.liters || 0));
       } else if (sortKey === "deals") {
-        arr.sort((a, b) => b.deals - a.deals);
+        arr.sort((a, b) => (b.deals || 0) - (a.deals || 0));
       } else if (sortKey === "conversion") {
-        arr.sort((a, b) => {
-          const convA = a.calls > 0 ? a.deals / a.calls : 0;
-          const convB = b.calls > 0 ? b.deals / b.calls : 0;
-          return convB - convA;
-        });
+        arr.sort((a, b) => mConv(b) - mConv(a));
       }
       return arr;
     }
@@ -238,15 +57,15 @@
       tbody.innerHTML = "";
 
       data.forEach((m) => {
-        const conv = m.calls > 0 ? (m.deals / m.calls) * 100 : 0;
+        const conv = mConv(m) * 100;
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${m.name}</td>
-          <td>${m.office}</td>
-          <td>${formatNumber(m.calls)}</td>
-          <td>${formatNumber(m.deals)}</td>
+          <td>${m.name || ''}</td>
+          <td>${m.office || ''}</td>
+          <td>${formatNumber(m.calls || 0)}</td>
+          <td>${formatNumber(m.deals || 0)}</td>
           <td>${conv.toFixed(1)}%</td>
-          <td>${formatNumber(m.liters)} л</td>
+          <td>${formatNumber(m.liters || 0)} л</td>
         `;
         tbody.appendChild(tr);
       });
@@ -255,7 +74,7 @@
     function renderChart(data) {
       const ctx = document.getElementById("liters-chart").getContext("2d");
       const labels = data.map((m) => m.name);
-      const liters = data.map((m) => m.liters);
+      const liters = data.map((m) => m.liters || 0);
 
       if (litersChartInstance) {
         litersChartInstance.destroy();
@@ -276,9 +95,7 @@
           responsive: true,
           plugins: {
             legend: {
-              labels: {
-                color: "#f5f5f5"
-              }
+              labels: { color: "#f5f5f5" }
             }
           },
           scales: {
@@ -302,6 +119,17 @@
       renderChart(sorted);
     }
 
+    async function loadData() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        MANAGERS_DATA = data;
+        renderAll();
+      } catch (err) {
+        console.error("Помилка завантаження даних з API:", err);
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       const sortSelect = document.getElementById("sort-select");
       sortSelect.addEventListener("change", (e) => {
@@ -309,9 +137,6 @@
         renderAll();
       });
 
-      renderAll();
+      loadData();
     });
   </script>
-
-</body>
-</html>
