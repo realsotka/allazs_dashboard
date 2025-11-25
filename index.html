@@ -4,175 +4,227 @@
   <meta charset="UTF-8" />
   <title>ALLAZS Dashboard</title>
   <style>
-    * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
+  body {
+    margin: 0;
+    padding: 32px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #020617; /* як у кабінеті */
+    color: #e5e7eb;
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: #f9fafb;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 4px;
+  }
+
+  .layout {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* верхня панель */
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .month-select-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    font-size: 13px;
+    color: #9ca3af;
+  }
+
+  select {
+    background: #020617;
+    color: #e5e7eb;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    padding: 6px 12px;
+    font-size: 13px;
+    outline: none;
+  }
+
+  select:focus {
+    border-color: #60a5fa;
+  }
+
+  /* картки зверху – в стилі кабінету */
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: radial-gradient(circle at top left, #111827, #020617);
+    border-radius: 18px;
+    padding: 18px 20px;
+    box-shadow: 0 22px 45px rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    margin-bottom: 8px;
+  }
+
+  .value {
+    font-size: 26px;
+    font-weight: 600;
+    color: #f9fafb;
+  }
+
+  .card-delta {
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .card-delta.positive { color: #4ade80; }
+  .card-delta.negative { color: #f97373; }
+
+  /* секції-«контейнери» як у кабінеті */
+
+  .section {
+    background: radial-gradient(circle at top left, #0b1220, #020617);
+    border-radius: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    padding: 18px 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 22px 45px rgba(15, 23, 42, 0.8);
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #f9fafb;
+  }
+
+  /* таблиці */
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  thead {
+    background: rgba(15, 23, 42, 0.96);
+  }
+
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  th {
+    font-weight: 500;
+    color: #9ca3af;
+    border-bottom: 1px solid rgba(55, 65, 81, 0.9);
+  }
+
+  tbody tr:nth-child(odd) {
+    background: rgba(15, 23, 42, 0.85);
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(15, 23, 42, 0.6);
+  }
+
+  tbody tr:hover {
+    background: rgba(37, 99, 235, 0.25);
+    cursor: pointer;
+  }
+
+  .delta {
+    font-size: 11px;
+    margin-left: 6px;
+  }
+
+  .delta.positive { color: #4ade80; }
+  .delta.negative { color: #f97373; }
+
+  /* лідерборд */
+
+  .medal-cell {
+    width: 70px;
+  }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: rgba(15, 23, 42, 0.9);
+    color: #e5e7eb;
+    margin-right: 6px;
+  }
+
+  .leader-score {
+    text-align: right;
+    font-weight: 600;
+    font-size: 14px;
+    color: #e5e7eb;
+  }
+
+  /* повідомлення про помилки */
+
+  .error-message {
+    color: #fca5a5;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  /* адаптив */
+
+  @media (max-width: 768px) {
     body {
-      background-color: #050713;
-      color: #f5f5f5;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 32px;
+      padding: 20px 12px;
     }
-
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      opacity: 0.7;
-      margin-bottom: 12px;
-    }
-
-    .layout { max-width: 1200px; }
 
     .top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-bottom: 8px;
-      gap: 16px;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
     .month-select-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
+      align-items: flex-start;
     }
+  }
+</style>
 
-    .month-label {
-      font-size: 12px;
-      opacity: 0.7;
-    }
-
-    select {
-      background: #181824;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #f5f5f5;
-      padding: 6px 10px;
-      font-size: 13px;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .card {
-      background: linear-gradient(135deg, #14141b, #111117);
-      padding: 18px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    }
-
-    .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      opacity: 0.6;
-      margin-bottom: 6px;
-      letter-spacing: 0.07em;
-    }
-
-    .value {
-      font-size: 24px;
-      font-weight: 700;
-    }
-
-    .card-delta {
-      font-size: 12px;
-      margin-top: 4px;
-      opacity: 0.9;
-    }
-
-    .card-delta.positive { color: #4caf50; }
-    .card-delta.negative { color: #f44336; }
-
-    .section {
-      background: #101018;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.06);
-      padding: 18px;
-      margin-bottom: 24px;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    th, td {
-      padding: 8px 10px;
-      text-align: left;
-    }
-
-    thead {
-      background: #181824;
-    }
-
-    tbody tr:nth-child(even) {
-      background: rgba(255,255,255,0.02);
-    }
-
-    tbody tr:hover {
-      background: rgba(255,255,255,0.06);
-      cursor: pointer;
-    }
-
-    .delta {
-      font-size: 11px;
-      margin-left: 6px;
-    }
-
-    .delta.positive { color: #4caf50; }
-    .delta.negative { color: #f44336; }
-
-    .error-message {
-      color: #ff6666;
-      font-size: 13px;
-      margin-top: 4px;
-      opacity: 0.8;
-    }
-
-    .medal-cell { width: 60px; }
-
-    .rank-badge {
-      display: inline-block;
-      min-width: 22px;
-      text-align: center;
-      font-size: 11px;
-      padding: 2px 4px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      margin-right: 4px;
-    }
-
-    .leader-score {
-      text-align: right;
-      font-size: 13px;
-      font-weight: 600;
-      opacity: 0.85;
-      padding-right: 16px;
-    }
-  </style>
 </head>
 
 <body>
