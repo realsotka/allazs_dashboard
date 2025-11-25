@@ -152,7 +152,7 @@
       opacity: 0.8;
     }
 
-    .medal-cell { width: 52px; }
+    .medal-cell { width: 60px; }
 
     .rank-badge {
       display: inline-block;
@@ -165,14 +165,12 @@
       margin-right: 4px;
     }
 
-    .score-pill {
-      display: inline-block;
-      font-size: 11px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      margin-left: 6px;
-      opacity: 0.8;
+    .leader-score {
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0.85;
+      padding-right: 16px;
     }
   </style>
 </head>
@@ -255,6 +253,7 @@
           <th>Угоди</th>
           <th>Нові заправки</th>
           <th>Перемоги</th>
+          <th>Бали</th>
         </tr>
         </thead>
         <tbody id="leaderboard-body"></tbody>
@@ -501,14 +500,14 @@
         tr.innerHTML =
           '<td class="medal-cell">' +
             '<span class="rank-badge">' + place + '</span> ' + medal +
-            '<span class="score-pill">' + Math.round(m.score * 100) + ' балів</span>' +
           '</td>' +
           '<td>' + (m.name || '') + '</td>' +
           '<td>' + (m.office || '') + '</td>' +
           '<td>' + formatNumber(m.liters) + ' л</td>' +
           '<td>' + formatNumber(m.deals) + '</td>' +
           '<td>' + formatNumber(m.newFills || m.newFuels) + '</td>' +
-          '<td>' + formatNumber(m.wins) + '</td>';
+          '<td>' + formatNumber(m.wins) + '</td>' +
+          '<td class="leader-score">' + Math.round(m.score * 100) + '</td>';
         tbody.appendChild(tr);
       }
     }
