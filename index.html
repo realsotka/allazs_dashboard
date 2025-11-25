@@ -403,9 +403,10 @@
       return '<span class="' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
     }
 
+    // 🔴 ОНОВЛЕНА ФУНКЦІЯ – тут головний фікс
     function openManagerWindow(manager) {
       if (!manager || !manager.name) return;
-      var url = 'manager.html?name=' +
+      var url = 'manager.html?manager=' +
         encodeURIComponent(manager.name) +
         '&month=' + encodeURIComponent(currentMonth);
       window.open(url, '_blank');
