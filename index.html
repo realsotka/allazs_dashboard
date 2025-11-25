@@ -3,9 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <title>ALLAZS Dashboard</title>
+
+  <!-- Стилі -->
+  <style>
+    body {
+      background-color: #0b0b0f;
+      color: #f5f5f5;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 32px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      opacity: 0.7;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: linear-gradient(135deg, #14141b, #111117);
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      width: 260px;
+      margin-bottom: 32px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.6;
+      margin-bottom: 6px;
+      letter-spacing: 0.07em;
+    }
+
+    .value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+  </style>
 </head>
+
 <body>
   <h1>ALLAZS Dashboard</h1>
-  <p>Тестовий дашборд. Тут потім будуть метрики менеджерів.</p>
+  <div class="subtitle">Панель ефективності. Зараз тут тестові дані.</div>
+
+  <!-- Картка -->
+  <div class="card">
+    <div class="label">Усього літрів (демо)</div>
+    <div class="value" id="total-liters">–</div>
+  </div>
+
+  <!-- JS -->
+  <script>
+    // Тимчасові мок-дані менеджерів (поки без Google Sheets)
+    const managers = [
+      { name: "Іван", liters: 4500 },
+      { name: "Марія", liters: 4100 },
+      { name: "Олег", liters: 3100 }
+    ];
+
+    // Розрахунок сумарних літрів
+    const totalLiters = managers.reduce((sum, m) => sum + m.liters, 0);
+
+    document.getElementById("total-liters").textContent =
+      totalLiters.toLocaleString("uk-UA") + " л";
+  </script>
+
 </body>
 </html>
