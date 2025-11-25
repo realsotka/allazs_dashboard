@@ -1,589 +1,273 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8" />
-  <title>ALLAZS Dashboard</title>
+<script>
+  // 🔑 ВСТАВ НОВИЙ URL ВЕБ-ДОДАТКА APP SCRIPT
+  var API_URL = 'https://script.google.com/macros/s/AKfycbzGFLQHObPRHPaglIBqlW6_AhPXSz3TQWyhMPwitFyOlQw3xjCFYMOoaDbIQa0u-315/exec';
 
-  <style>
-    * { box-sizing: border-box; }
+  var currentSort = 'liters';
+  var currentMonth = 'Листопад';
+  var MANAGERS_DATA = [];
 
-    body {
-      background-color: #0b0b0f;
-      color: #f5f5f5;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 32px;
+  function safeNumber(x) {
+    var n = Number(x);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function formatNumber(num) {
+    return safeNumber(num).toLocaleString('uk-UA');
+  }
+
+  function diffPct(current, prev) {
+    current = safeNumber(current);
+    prev = safeNumber(prev);
+    if (!prev) return null;
+    return ((current - prev) / prev) * 100;
+  }
+
+  // ===== Агрегати для карток =====
+  function calcTotals(data) {
+    var totalLiters = 0, totalLitersPrev = 0;
+    var totalDeals  = 0, totalDealsPrev  = 0;
+    var totalFills  = 0, totalFillsPrev  = 0;
+
+    for (var i = 0; i < data.length; i++) {
+      var m = data[i];
+      totalLiters     += safeNumber(m.liters);
+      totalLitersPrev += safeNumber(m.litersPrev);
+      totalDeals      += safeNumber(m.deals);
+      totalDealsPrev  += safeNumber(m.dealsPrev);
+      totalFills      += safeNumber(m.fills);
+      totalFillsPrev  += safeNumber(m.fillsPrev);
     }
 
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 8px;
+    return {
+      totalLiters: totalLiters,
+      totalLitersPrev: totalLitersPrev,
+      totalDeals: totalDeals,
+      totalDealsPrev: totalDealsPrev,
+      totalFills: totalFills,
+      totalFillsPrev: totalFillsPrev,
+      managerCount: data.length
+    };
+  }
+
+  function renderCardDelta(elementId, pct) {
+    var el = document.getElementById(elementId);
+    if (!el) return;
+    if (pct === null || pct === undefined || isNaN(pct)) {
+      el.textContent = '';
+      el.className = 'card-delta';
+      return;
     }
+    var sign = pct > 0 ? '+' : '';
+    el.textContent = sign + pct.toFixed(1) + '%';
+    el.className = 'card-delta ' + (pct > 0 ? 'positive' : 'negative');
+  }
 
-    .subtitle {
-      opacity: 0.7;
-      margin-bottom: 12px;
-    }
+  function renderTopCards(data) {
+    var t = calcTotals(data);
 
-    .layout { max-width: 1200px; }
+    document.getElementById('total-liters').textContent =
+      formatNumber(t.totalLiters) + ' л';
+    document.getElementById('total-deals').textContent =
+      formatNumber(t.totalDeals);
+    document.getElementById('total-fills').textContent =
+      formatNumber(t.totalFills);
+    document.getElementById('manager-count').textContent = t.managerCount;
 
-    .top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-bottom: 8px;
-      gap: 16px;
-    }
+    renderCardDelta(
+      'total-liters-delta',
+      diffPct(t.totalLiters, t.totalLitersPrev)
+    );
+    renderCardDelta(
+      'total-deals-delta',
+      diffPct(t.totalDeals, t.totalDealsPrev)
+    );
+    renderCardDelta(
+      'total-fills-delta',
+      diffPct(t.totalFills, t.totalFillsPrev)
+    );
+  }
 
-    .month-select-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
-    }
-
-    .month-label {
-      font-size: 12px;
-      opacity: 0.7;
-    }
-
-    select {
-      background: #181824;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #f5f5f5;
-      padding: 6px 10px;
-      font-size: 13px;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .card {
-      background: linear-gradient(135deg, #14141b, #111117);
-      padding: 18px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    }
-
-    .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      opacity: 0.6;
-      margin-bottom: 6px;
-      letter-spacing: 0.07em;
-    }
-
-    .value {
-      font-size: 24px;
-      font-weight: 700;
-    }
-
-    .card-delta {
-      font-size: 12px;
-      margin-top: 4px;
-      opacity: 0.9;
-    }
-
-    .card-delta.positive { color: #4caf50; }
-    .card-delta.negative { color: #f44336; }
-
-    .section {
-      background: #101018;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.06);
-      padding: 18px;
-      margin-bottom: 24px;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    th, td {
-      padding: 8px 10px;
-      text-align: left;
-    }
-
-    thead {
-      background: #181824;
-    }
-
-    tbody tr:nth-child(even) {
-      background: rgba(255,255,255,0.02);
-    }
-
-    tbody tr:hover {
-      background: rgba(255,255,255,0.06);
-      cursor: pointer;
-    }
-
-    .delta {
-      font-size: 11px;
-      margin-left: 6px;
-    }
-
-    .delta.positive { color: #4caf50; }
-    .delta.negative { color: #f44336; }
-
-    .error-message {
-      color: #ff6666;
-      font-size: 13px;
-      margin-top: 4px;
-      opacity: 0.8;
-    }
-
-    .medal-cell { width: 60px; }
-
-    .rank-badge {
-      display: inline-block;
-      min-width: 22px;
-      text-align: center;
-      font-size: 11px;
-      padding: 2px 4px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      margin-right: 4px;
-    }
-
-    .leader-score {
-      text-align: right;
-      font-size: 13px;
-      font-weight: 600;
-      opacity: 0.85;
-      padding-right: 16px;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="layout">
-    <div class="top-row">
-      <div>
-        <h1>ALLAZS Dashboard</h1>
-        <div class="subtitle">Панель ефективності менеджерів. Дані з Google Sheets.</div>
-        <div id="error-box" class="error-message" style="display:none;"></div>
-      </div>
-      <div class="month-select-wrapper">
-        <div class="month-label">Місяць</div>
-        <select id="month-select">
-          <option value="Листопад">Листопад</option>
-          <option value="Жовтень">Жовтень</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Картки -->
-    <div class="cards">
-      <div class="card">
-        <div class="label">Усього літрів (місяць)</div>
-        <div class="value" id="total-liters">–</div>
-        <div class="card-delta" id="total-liters-delta"></div>
-      </div>
-      <div class="card">
-        <div class="label">Усього угод</div>
-        <div class="value" id="total-deals">–</div>
-        <div class="card-delta" id="total-deals-delta"></div>
-      </div>
-      <div class="card">
-        <div class="label">Усього нових заправок</div>
-        <div class="value" id="total-fills">–</div>
-        <div class="card-delta" id="total-fills-delta"></div>
-      </div>
-      <div class="card">
-        <div class="label">Кількість менеджерів</div>
-        <div class="value" id="manager-count">–</div>
-      </div>
-    </div>
-
-    <!-- РЕЗУЛЬТАТИ менеджерів -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-title">Результати менеджерів</div>
-        <select id="sort-select">
-          <option value="liters">За літрами</option>
-          <option value="deals">За угодами</option>
-          <option value="fills">За новими заправками</option>
-        </select>
-      </div>
-      <table>
-        <thead>
-        <tr>
-          <th>Менеджер</th>
-          <th>Офіс</th>
-          <th>Літри</th>
-          <th>Угоди</th>
-          <th>Нові заправки</th>
-          <th>Перемоги</th>
-        </tr>
-        </thead>
-        <tbody id="manager-table-body"></tbody>
-      </table>
-    </div>
-
-    <!-- ЛІДЕРБОРД -->
-    <div class="section">
-      <div class="section-title" style="margin-bottom: 12px;">Лідерборд менеджерів</div>
-      <table>
-        <thead>
-        <tr>
-          <th class="medal-cell">Місце</th>
-          <th>Менеджер</th>
-          <th>Офіс</th>
-          <th>Літри</th>
-          <th>Угоди</th>
-          <th>Нові заправки</th>
-          <th>Перемоги</th>
-          <th>Бали</th>
-        </tr>
-        </thead>
-        <tbody id="leaderboard-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <script>
-    // 🔑 API endpoint (Google Sheets)
-    var API_URL = 'https://script.google.com/macros/s/AKfycbwTEohP5g80dh3_FapiZ56-L-M5z4DJK0iGjPq0tgdIjwBzP06Wt9V64TX0Z7NXZVWS/exec';
-
-    var currentSort = 'liters';
-    var currentMonth = 'Листопад';
-    var MANAGERS_DATA = [];
-
-    function safeNumber(x) {
-      var n = Number(x);
-      return isNaN(n) ? 0 : n;
-    }
-
-    function formatNumber(num) {
-      return safeNumber(num).toLocaleString('uk-UA');
-    }
-
-    function getPrevFromChange(currentVal, changePct) {
-      if (changePct === null || changePct === undefined || isNaN(changePct)) return null;
-      if (changePct <= -100) return 0;
-      return currentVal / (1 + changePct / 100);
-    }
-
-    function cardAggregateChange(current, prev) {
-      if (!prev || prev <= 0) return null;
-      return ((current - prev) / prev) * 100;
-    }
-
-    function calcTotals(data) {
-      var totalLiters = 0, totalLitersPrev = 0;
-      var totalDeals  = 0, totalDealsPrev  = 0;
-      var totalFills  = 0, totalFillsPrev  = 0;
-
-      for (var i = 0; i < data.length; i++) {
-        var m = data[i];
-
-        var curL = safeNumber(m.liters);
-        totalLiters += curL;
-        var lChange = null;
-        if (typeof m.litersChangePct === 'number') lChange = m.litersChangePct;
-        else if (m.change && typeof m.change.liters === 'number') lChange = m.change.liters;
-        var prevL = getPrevFromChange(curL, lChange);
-        if (prevL !== null) totalLitersPrev += prevL;
-
-        var curD = safeNumber(m.deals);
-        totalDeals += curD;
-        var dChange = null;
-        if (typeof m.dealsChangePct === 'number') dChange = m.dealsChangePct;
-        else if (m.change && typeof m.change.deals === 'number') dChange = m.change.deals;
-        var prevD = getPrevFromChange(curD, dChange);
-        if (prevD !== null) totalDealsPrev += prevD;
-
-        var curF = safeNumber(m.newFills || m.newFuels);
-        totalFills += curF;
-        var fChange = null;
-        if (typeof m.newFillsChangePct === 'number') fChange = m.newFillsChangePct;
-        else if (m.change && typeof m.change.newFuels === 'number') fChange = m.change.newFuels;
-        var prevF = getPrevFromChange(curF, fChange);
-        if (prevF !== null) totalFillsPrev += prevF;
+  // ===== Сортування та таблиця =====
+  function getSortedData(data, sortKey) {
+    var arr = data.slice();
+    arr.sort(function(a, b) {
+      if (sortKey === 'liters') {
+        return safeNumber(b.liters) - safeNumber(a.liters);
+      } else if (sortKey === 'deals') {
+        return safeNumber(b.deals) - safeNumber(a.deals);
+      } else if (sortKey === 'fills') {
+        return safeNumber(b.fills) - safeNumber(a.fills);
       }
+      return 0;
+    });
+    return arr;
+  }
 
-      return {
-        totalLiters: totalLiters,
-        totalLitersPrev: totalLitersPrev,
-        totalDeals: totalDeals,
-        totalDealsPrev: totalDealsPrev,
-        totalFills: totalFills,
-        totalFillsPrev: totalFillsPrev,
-        managerCount: data.length
-      };
+  function formatDeltaCell(current, prev) {
+    var pct = diffPct(current, prev);
+    if (pct === null) return '';
+    var sign = pct > 0 ? '+' : '';
+    var cls = pct > 0 ? 'delta positive' : 'delta negative';
+    return '<span class="' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
+  }
+
+  function openManagerWindow(manager) {
+    if (!manager || !manager.name) return;
+    var url = 'manager.html?name=' +
+      encodeURIComponent(manager.name) +
+      '&month=' + encodeURIComponent(currentMonth);
+    window.open(url, '_blank');
+  }
+
+  function attachRowCabinetHandler(tr, managerObj) {
+    tr.addEventListener('click', function() {
+      openManagerWindow(managerObj);
+    });
+  }
+
+  function renderTable(data) {
+    var tbody = document.getElementById('manager-table-body');
+    tbody.innerHTML = '';
+
+    for (var i = 0; i < data.length; i++) {
+      var m = data[i];
+
+      var litersCell =
+        formatNumber(m.liters) + ' л ' + formatDeltaCell(m.liters, m.litersPrev);
+      var dealsCell =
+        formatNumber(m.deals) + ' ' + formatDeltaCell(m.deals, m.dealsPrev);
+      var fillsCell =
+        formatNumber(m.fills) + ' ' + formatDeltaCell(m.fills, m.fillsPrev);
+      var winsCell =
+        formatNumber(m.wins) + ' ' + formatDeltaCell(m.wins, m.winsPrev);
+
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + (m.name || '') + '</td>' +
+        '<td>' + (m.office || '') + '</td>' +
+        '<td>' + litersCell + '</td>' +
+        '<td>' + dealsCell + '</td>' +
+        '<td>' + fillsCell + '</td>' +
+        '<td>' + winsCell + '</td>';
+      attachRowCabinetHandler(tr, m);
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ===== Лідерборд =====
+  function computeLeaderboard(data) {
+    if (!data || !data.length) return [];
+
+    var maxLiters = 0, maxDeals = 0, maxFills = 0, maxWins = 0;
+    for (var i = 0; i < data.length; i++) {
+      maxLiters = Math.max(maxLiters, safeNumber(data[i].liters));
+      maxDeals  = Math.max(maxDeals,  safeNumber(data[i].deals));
+      maxFills  = Math.max(maxFills,  safeNumber(data[i].fills));
+      maxWins   = Math.max(maxWins,   safeNumber(data[i].wins));
     }
 
-    function renderCardDelta(elementId, pct) {
-      var el = document.getElementById(elementId);
-      if (!el) return;
-      if (pct === null || pct === undefined || isNaN(pct)) {
-        el.textContent = '';
-        el.className = 'card-delta';
-        return;
-      }
-      var sign = pct > 0 ? '+' : '';
-      el.textContent = sign + pct.toFixed(1) + '%';
-      el.className = 'card-delta ' + (pct > 0 ? 'positive' : 'negative');
+    var wLiters = 4, wDeals = 3, wFills = 2, wWins = 1;
+    var arr = [];
+
+    for (var j = 0; j < data.length; j++) {
+      var m = data[j];
+      var litersNorm = maxLiters ? safeNumber(m.liters) / maxLiters : 0;
+      var dealsNorm  = maxDeals  ? safeNumber(m.deals)  / maxDeals  : 0;
+      var fillsNorm  = maxFills  ? safeNumber(m.fills)  / maxFills  : 0;
+      var winsNorm   = maxWins   ? safeNumber(m.wins)   / maxWins   : 0;
+
+      var score = litersNorm * wLiters +
+                  dealsNorm  * wDeals  +
+                  fillsNorm  * wFills  +
+                  winsNorm   * wWins;
+
+      var copy = {};
+      for (var key in m) copy[key] = m[key];
+      copy.score = score;
+      arr.push(copy);
     }
 
-    function renderTopCards(data) {
-      var t = calcTotals(data);
+    arr.sort(function(a, b) { return b.score - a.score; });
+    return arr;
+  }
 
-      document.getElementById('total-liters').textContent =
-        formatNumber(t.totalLiters) + ' л';
-      document.getElementById('total-deals').textContent =
-        formatNumber(t.totalDeals);
-      document.getElementById('total-fills').textContent =
-        formatNumber(t.totalFills);
-      document.getElementById('manager-count').textContent = t.managerCount;
+  function renderLeaderboard(data) {
+    var tbody = document.getElementById('leaderboard-body');
+    tbody.innerHTML = '';
 
-      renderCardDelta(
-        'total-liters-delta',
-        cardAggregateChange(t.totalLiters, t.totalLitersPrev)
-      );
-      renderCardDelta(
-        'total-deals-delta',
-        cardAggregateChange(t.totalDeals, t.totalDealsPrev)
-      );
-      renderCardDelta(
-        'total-fills-delta',
-        cardAggregateChange(t.totalFills, t.totalFillsPrev)
-      );
+    var ranked = computeLeaderboard(data);
+    for (var i = 0; i < ranked.length; i++) {
+      var m = ranked[i];
+      var place = i + 1;
+      var medal = '';
+      if (i === 0) medal = '🥇';
+      else if (i === 1) medal = '🥈';
+      else if (i === 2) medal = '🥉';
+
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="medal-cell">' +
+          '<span class="rank-badge">' + place + '</span> ' + medal +
+        '</td>' +
+        '<td>' + (m.name || '') + '</td>' +
+        '<td>' + (m.office || '') + '</td>' +
+        '<td>' + formatNumber(m.liters) + ' л</td>' +
+        '<td>' + formatNumber(m.deals) + '</td>' +
+        '<td>' + formatNumber(m.fills) + '</td>' +
+        '<td>' + formatNumber(m.wins) + '</td>' +
+        '<td class="leader-score">' + Math.round(m.score * 100) + '</td>';
+      attachRowCabinetHandler(tr, m);
+      tbody.appendChild(tr);
     }
+  }
 
-    function getSortedData(data, sortKey) {
-      var arr = data.slice();
-      arr.sort(function(a, b) {
-        if (sortKey === 'liters') {
-          return safeNumber(b.liters) - safeNumber(a.liters);
-        } else if (sortKey === 'deals') {
-          return safeNumber(b.deals) - safeNumber(a.deals);
-        } else if (sortKey === 'fills') {
-          var af = safeNumber(a.newFills || a.newFuels);
-          var bf = safeNumber(b.newFills || b.newFuels);
-          return bf - af;
+  function renderAll() {
+    var sorted = getSortedData(MANAGERS_DATA, currentSort);
+    renderTopCards(sorted);
+    renderTable(sorted);
+    renderLeaderboard(MANAGERS_DATA);
+  }
+
+  function loadData(month) {
+    currentMonth = month;
+    var errorBox = document.getElementById('error-box');
+    errorBox.style.display = 'none';
+    errorBox.textContent = '';
+
+    var url = API_URL + '?month=' + encodeURIComponent(month);
+
+    fetch(url)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data || !Array.isArray(data.managers)) {
+          throw new Error('Некоректна відповідь API');
         }
-        return 0;
-      });
-      return arr;
-    }
-
-    function pickDelta(obj, field) {
-      if (!obj) return null;
-      if (typeof obj[field] === 'number') return obj[field];
-      if (obj.change && typeof obj.change[field] === 'number') return obj.change[field];
-      return null;
-    }
-
-    function formatDelta(pct) {
-      if (pct === null || pct === undefined || isNaN(pct)) return '';
-      var sign = pct > 0 ? '+' : '';
-      var cls = pct > 0 ? 'delta positive' : 'delta negative';
-      return '<span class="' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
-    }
-
-    // 🔴 ОНОВЛЕНА ФУНКЦІЯ – тут головний фікс
-    function openManagerWindow(manager) {
-      if (!manager || !manager.name) return;
-      var url = 'manager.html?manager=' +
-        encodeURIComponent(manager.name) +
-        '&month=' + encodeURIComponent(currentMonth);
-      window.open(url, '_blank');
-    }
-
-    function attachRowCabinetHandler(tr, managerObj) {
-      tr.addEventListener('click', function() {
-        openManagerWindow(managerObj);
-      });
-    }
-
-    function renderTable(data) {
-      var tbody = document.getElementById('manager-table-body');
-      tbody.innerHTML = '';
-
-      for (var i = 0; i < data.length; i++) {
-        var m = data[i];
-
-        var litersDelta = pickDelta(m, 'litersChangePct');
-        if (litersDelta === null) litersDelta = pickDelta(m, 'liters');
-        var dealsDelta  = pickDelta(m, 'dealsChangePct');
-        if (dealsDelta === null) dealsDelta = pickDelta(m, 'deals');
-        var fillsDelta  = pickDelta(m, 'newFillsChangePct');
-        if (fillsDelta === null) fillsDelta = pickDelta(m, 'newFuels');
-        var winsDelta   = pickDelta(m, 'winsChangePct');
-        if (winsDelta === null) winsDelta = pickDelta(m, 'wins');
-
-        var litersCell =
-          formatNumber(m.liters) + ' л ' + formatDelta(litersDelta);
-        var dealsCell =
-          formatNumber(m.deals) + ' ' + formatDelta(dealsDelta);
-        var fillsValue = safeNumber(m.newFills || m.newFuels);
-        var fillsCell =
-          formatNumber(fillsValue) + ' ' + formatDelta(fillsDelta);
-        var winsCell =
-          formatNumber(m.wins) + ' ' + formatDelta(winsDelta);
-
-        var tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td>' + (m.name || '') + '</td>' +
-          '<td>' + (m.office || '') + '</td>' +
-          '<td>' + litersCell + '</td>' +
-          '<td>' + dealsCell + '</td>' +
-          '<td>' + fillsCell + '</td>' +
-          '<td>' + winsCell + '</td>';
-        attachRowCabinetHandler(tr, m);
-        tbody.appendChild(tr);
-      }
-    }
-
-    // ------- ЛІДЕРБОРД З БАЛАМИ -------
-    function computeLeaderboard(data) {
-      if (!data || !data.length) return [];
-
-      var maxLiters = 0, maxDeals = 0, maxFills = 0, maxWins = 0;
-      for (var i = 0; i < data.length; i++) {
-        maxLiters = Math.max(maxLiters, safeNumber(data[i].liters));
-        maxDeals  = Math.max(maxDeals,  safeNumber(data[i].deals));
-        maxFills  = Math.max(maxFills,  safeNumber(data[i].newFills || data[i].newFuels));
-        maxWins   = Math.max(maxWins,   safeNumber(data[i].wins));
-      }
-
-      var wLiters = 4, wDeals = 3, wFills = 2, wWins = 1;
-
-      var arr = [];
-      for (var j = 0; j < data.length; j++) {
-        var m = data[j];
-        var litersNorm = maxLiters ? safeNumber(m.liters) / maxLiters : 0;
-        var dealsNorm  = maxDeals  ? safeNumber(m.deals)  / maxDeals  : 0;
-        var fillsNorm  = maxFills  ? safeNumber(m.newFills || m.newFuels) / maxFills : 0;
-        var winsNorm   = maxWins   ? safeNumber(m.wins)   / maxWins   : 0;
-
-        var score = litersNorm * wLiters +
-                    dealsNorm  * wDeals  +
-                    fillsNorm  * wFills  +
-                    winsNorm   * wWins;
-
-        var copy = {};
-        for (var key in m) copy[key] = m[key];
-        copy.score = score;
-        arr.push(copy);
-      }
-
-      arr.sort(function(a, b) { return b.score - a.score; });
-      return arr;
-    }
-
-    function renderLeaderboard(data) {
-      var tbody = document.getElementById('leaderboard-body');
-      tbody.innerHTML = '';
-
-      var ranked = computeLeaderboard(data);
-
-      for (var i = 0; i < ranked.length; i++) {
-        var m = ranked[i];
-        var place = i + 1;
-        var medal = '';
-        if (i === 0) medal = '🥇';
-        else if (i === 1) medal = '🥈';
-        else if (i === 2) medal = '🥉';
-
-        var tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td class="medal-cell">' +
-            '<span class="rank-badge">' + place + '</span> ' + medal +
-          '</td>' +
-          '<td>' + (m.name || '') + '</td>' +
-          '<td>' + (m.office || '') + '</td>' +
-          '<td>' + formatNumber(m.liters) + ' л</td>' +
-          '<td>' + formatNumber(m.deals) + '</td>' +
-          '<td>' + formatNumber(m.newFills || m.newFuels) + '</td>' +
-          '<td>' + formatNumber(m.wins) + '</td>' +
-          '<td class="leader-score">' + Math.round(m.score * 100) + '</td>';
-        attachRowCabinetHandler(tr, m);
-        tbody.appendChild(tr);
-      }
-    }
-
-    function renderAll() {
-      var sorted = getSortedData(MANAGERS_DATA, currentSort);
-      renderTopCards(sorted);
-      renderTable(sorted);
-      renderLeaderboard(MANAGERS_DATA);
-    }
-
-    function loadData(month) {
-      currentMonth = month;
-      var errorBox = document.getElementById('error-box');
-      errorBox.style.display = 'none';
-      errorBox.textContent = '';
-
-      var url = API_URL + '?month=' + encodeURIComponent(month);
-
-      fetch(url)
-        .then(function(res) { return res.text(); })
-        .then(function(text) {
-          var data;
-          try {
-            data = JSON.parse(text);
-          } catch (e) {
-            console.error('JSON parse error:', text);
-            throw new Error('Невірний формат відповіді API');
-          }
-
-          if (!Array.isArray(data)) {
-            console.error('API повернув не масив:', data);
-            throw new Error('API повернув помилку або неочікувані дані');
-          }
-
-          MANAGERS_DATA = data;
-          renderAll();
-        })
-        .catch(function(err) {
-          console.error('Помилка завантаження з API:', err);
-          errorBox.textContent =
-            'Помилка завантаження даних з API. Перевір Apps Script або доступ до таблиці.';
-          errorBox.style.display = 'block';
-          MANAGERS_DATA = [];
-          renderAll();
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      var sortSelect = document.getElementById('sort-select');
-      sortSelect.addEventListener('change', function(e) {
-        currentSort = e.target.value;
+        MANAGERS_DATA = data.managers || [];
+        renderAll();
+      })
+      .catch(function(err) {
+        console.error('Помилка завантаження з API:', err);
+        errorBox.textContent =
+          'Помилка завантаження даних з API. Перевір Apps Script або доступ до таблиці.';
+        errorBox.style.display = 'block';
+        MANAGERS_DATA = [];
         renderAll();
       });
+  }
 
-      var monthSelect = document.getElementById('month-select');
-      monthSelect.value = currentMonth;
-      monthSelect.addEventListener('change', function(e) {
-        loadData(e.target.value);
-      });
-
-      loadData(currentMonth);
+  document.addEventListener('DOMContentLoaded', function() {
+    var sortSelect = document.getElementById('sort-select');
+    sortSelect.addEventListener('change', function(e) {
+      currentSort = e.target.value;
+      renderAll();
     });
-  </script>
-</body>
-</html>
+
+    var monthSelect = document.getElementById('month-select');
+    monthSelect.value = currentMonth;
+    monthSelect.addEventListener('change', function(e) {
+      loadData(e.target.value);
+    });
+
+    loadData(currentMonth);
+  });
+</script>
