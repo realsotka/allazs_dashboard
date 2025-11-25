@@ -115,6 +115,19 @@
     tbody tr:hover {
       background: rgba(255,255,255,0.06);
     }
+
+    .delta {
+      font-size: 11px;
+      margin-left: 6px;
+    }
+
+    .delta.positive {
+      color: #4caf50;
+    }
+
+    .delta.negative {
+      color: #f44336;
+    }
   </style>
 </head>
 
@@ -150,7 +163,7 @@
         <select id="sort-select">
           <option value="liters">За літрами</option>
           <option value="deals">За угодами</option>
-          <option value="conversion">За конверсією</option>
+          <option value="fills">За новими заправками</option>
         </select>
       </div>
       <table>
@@ -158,10 +171,10 @@
           <tr>
             <th>Менеджер</th>
             <th>Офіс</th>
-            <th>Дзвінки</th>
-            <th>Угоди</th>
-            <th>Конверсія</th>
             <th>Літри</th>
+            <th>Угоди</th>
+            <th>Нові заправки</th>
+            <th>Перемоги</th>
           </tr>
         </thead>
         <tbody id="manager-table-body"></tbody>
@@ -177,8 +190,8 @@
 
   <!-- JS -->
   <script>
-    // 👉 Твій реальний endpoint з Apps Script
-    const API_URL = 'https://script.google.com/macros/s/AKfycbzmZ2qzxAT7aY1QIGUkxtpxMDxMpwWWHaJ3XUcVc5GEPaBDBTfNKM0GndvFqnYCxbhv/exec';
+    // 👉 Твій endpoint з Apps Script
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxG1A27GfDcM79U7QMx7VANay6S6P2PAhie-k4fcoRi4N3_FoUW_cxr5T-IYXwJy3ZN/exec';
 
     let currentSort = "liters";
     let litersChartInstance = null;
@@ -212,22 +225,23 @@
       document.getElementById("manager-count").textContent = managerCount;
     }
 
-    function mConv(m) {
-      const calls = m.calls || 0;
-      const deals = m.deals || 0;
-      return calls > 0 ? deals / calls : 0;
-    }
-
     function getSortedData(data, sortKey) {
       const arr = [...data];
       if (sortKey === "liters") {
         arr.sort((a, b) => (b.liters || 0) - (a.liters || 0));
       } else if (sortKey === "deals") {
         arr.sort((a, b) => (b.deals || 0) - (a.deals || 0));
-      } else if (sortKey === "conversion") {
-        arr.sort((a, b) => mConv(b) - mConv(a));
+      } else if (sortKey === "fills") {
+        arr.sort((a, b) => (b.newFills || 0) - (a.newFills || 0));
       }
       return arr;
+    }
+
+    function formatDelta(pct) {
+      if (pct === null || isNaN(pct)) return "";
+      const sign = pct > 0 ? "+" : "";
+      const cls = pct > 0 ? "delta positive" : "delta negative";
+      return `<span class="${cls}">${sign}${pct.toFixed(1)}%</span>`;
     }
 
     function renderTable(data) {
@@ -235,15 +249,19 @@
       tbody.innerHTML = "";
 
       data.forEach((m) => {
-        const conv = mConv(m) * 100;
+        const dealsCell = `
+          ${formatNumber(m.deals || 0)}
+          ${formatDelta(m.dealsChangePct)}
+        `;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${m.name || ''}</td>
           <td>${m.office || ''}</td>
-          <td>${formatNumber(m.calls || 0)}</td>
-          <td>${formatNumber(m.deals || 0)}</td>
-          <td>${conv.toFixed(1)}%</td>
           <td>${formatNumber(m.liters || 0)} л</td>
+          <td>${dealsCell}</td>
+          <td>${formatNumber(m.newFills || 0)}</td>
+          <td>${formatNumber(m.wins || 0)}</td>
         `;
         tbody.appendChild(tr);
       });
