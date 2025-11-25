@@ -173,88 +173,6 @@
       opacity: 0.85;
       padding-right: 16px;
     }
-
-    /* ===== Міні-кабінет ===== */
-
-    #manager-cabinet {
-      display: none;
-    }
-
-    .cabinet-header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .cabinet-main-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .cabinet-name {
-      font-size: 20px;
-      font-weight: 600;
-    }
-
-    .cabinet-subinfo {
-      font-size: 13px;
-      opacity: 0.75;
-    }
-
-    .cabinet-points {
-      font-size: 14px;
-      font-weight: 600;
-      opacity: 0.9;
-    }
-
-    .cabinet-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
-    }
-
-    .cabinet-card {
-      background: #12121c;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.06);
-      padding: 14px;
-    }
-
-    .cabinet-card-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    .mini-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-
-    .mini-table th,
-    .mini-table td {
-      padding: 4px 6px;
-    }
-
-    .mini-table thead {
-      background: rgba(255,255,255,0.04);
-    }
-
-    .mini-label {
-      font-size: 12px;
-      opacity: 0.7;
-      margin-bottom: 4px;
-    }
-
-    .mini-value {
-      font-size: 16px;
-      font-weight: 600;
-    }
   </style>
 </head>
 
@@ -342,97 +260,15 @@
         <tbody id="leaderboard-body"></tbody>
       </table>
     </div>
-
-    <!-- МІНІ-КАБІНЕТ МЕНЕДЖЕРА -->
-    <div class="section" id="manager-cabinet">
-      <div class="cabinet-header-row">
-        <div class="cabinet-main-info">
-          <div class="cabinet-name" id="cabinet-name">Менеджер</div>
-          <div class="cabinet-subinfo" id="cabinet-office">Офіс</div>
-          <div class="cabinet-subinfo" id="cabinet-month">Місяць</div>
-        </div>
-        <div>
-          <div class="mini-label">Сумарні бали</div>
-          <div class="mini-value" id="cabinet-points">—</div>
-        </div>
-      </div>
-
-      <div class="cabinet-grid">
-        <div class="cabinet-card">
-          <div class="cabinet-card-title">План / факт за місяць</div>
-          <table class="mini-table">
-            <thead>
-              <tr>
-                <th>Метрика</th>
-                <th>План</th>
-                <th>Факт</th>
-                <th>%</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Літри</td>
-                <td id="plan-liters">—</td>
-                <td id="fact-liters">—</td>
-                <td id="pct-liters">—</td>
-              </tr>
-              <tr>
-                <td>Угоди</td>
-                <td id="plan-deals">—</td>
-                <td id="fact-deals">—</td>
-                <td id="pct-deals">—</td>
-              </tr>
-              <tr>
-                <td>Нові заправки</td>
-                <td id="plan-fills">—</td>
-                <td id="fact-fills">—</td>
-                <td id="pct-fills">—</td>
-              </tr>
-              <tr>
-                <td>Перемоги</td>
-                <td id="plan-wins">—</td>
-                <td id="fact-wins">—</td>
-                <td id="pct-wins">—</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="cabinet-card">
-          <div class="cabinet-card-title">Статистика дзвінків</div>
-
-          <div class="mini-label">Усього дзвінків</div>
-          <div class="mini-value" id="calls-total">—</div>
-
-          <div class="mini-label" style="margin-top:8px;">Успішні / пропущені</div>
-          <div class="mini-value" id="calls-success">—</div>
-
-          <div class="mini-label" style="margin-top:8px;">Середня тривалість розмови</div>
-          <div class="mini-value" id="calls-avg">—</div>
-
-          <div class="mini-label" style="margin-top:8px;">Загальна тривалість розмов</div>
-          <div class="mini-value" id="calls-total-duration">—</div>
-
-          <div class="mini-label" id="calls-note" style="margin-top:10px; font-size:11px; opacity:0.7;">
-            Підключення до телефонії ще не налаштовано.
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
 
   <script>
     // 🔑 API endpoint (Google Sheets)
     var API_URL = 'https://script.google.com/macros/s/AKfycbwGy12XHZZIWrXOA5-nRRURXfTCOJDkP1U_iuIzaPworQqq1CEDCKCh4YVNsSGHfvL-/exec';
 
-    // 🔑 endpoint телефонії (пізніше зробимо через Apps Script)
-    var CALLS_API_URL = ''; // сюди потім вставимо URL проксі для телефонії
-
     var currentSort = 'liters';
     var currentMonth = 'Листопад';
     var MANAGERS_DATA = [];
-    var SELECTED_MANAGER = null;
 
     function safeNumber(x) {
       var n = Number(x);
@@ -443,7 +279,6 @@
       return safeNumber(num).toLocaleString('uk-UA');
     }
 
-    // -------- Агреговані тотали + попередній місяць --------
     function getPrevFromChange(currentVal, changePct) {
       if (changePct === null || changePct === undefined || isNaN(changePct)) return null;
       if (changePct <= -100) return 0;
@@ -452,7 +287,7 @@
 
     function cardAggregateChange(current, prev) {
       if (!prev || prev <= 0) return null;
-      return ( (current - prev) / prev ) * 100;
+      return ((current - prev) / prev) * 100;
     }
 
     function calcTotals(data) {
@@ -463,7 +298,6 @@
       for (var i = 0; i < data.length; i++) {
         var m = data[i];
 
-        // liters
         var curL = safeNumber(m.liters);
         totalLiters += curL;
         var lChange = null;
@@ -472,7 +306,6 @@
         var prevL = getPrevFromChange(curL, lChange);
         if (prevL !== null) totalLitersPrev += prevL;
 
-        // deals
         var curD = safeNumber(m.deals);
         totalDeals += curD;
         var dChange = null;
@@ -481,7 +314,6 @@
         var prevD = getPrevFromChange(curD, dChange);
         if (prevD !== null) totalDealsPrev += prevD;
 
-        // fills (нові заправки)
         var curF = safeNumber(m.newFills || m.newFuels);
         totalFills += curF;
         var fChange = null;
@@ -540,7 +372,6 @@
       );
     }
 
-    // --------- Таблиця результатів ---------
     function getSortedData(data, sortKey) {
       var arr = data.slice();
       arr.sort(function(a, b) {
@@ -572,10 +403,17 @@
       return '<span class="' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
     }
 
+    function openManagerWindow(manager) {
+      if (!manager || !manager.name) return;
+      var url = 'manager.html?name=' +
+        encodeURIComponent(manager.name) +
+        '&month=' + encodeURIComponent(currentMonth);
+      window.open(url, '_blank');
+    }
+
     function attachRowCabinetHandler(tr, managerObj) {
-      tr.managerRef = managerObj;
       tr.addEventListener('click', function() {
-        openManagerCabinet(this.managerRef);
+        openManagerWindow(managerObj);
       });
     }
 
@@ -686,148 +524,13 @@
       }
     }
 
-    // ====== МІНІ-КАБІНЕТ ======
-    function pctFromPlan(plan, fact) {
-      plan = safeNumber(plan);
-      fact = safeNumber(fact);
-      if (!plan) return '—';
-      var pct = (fact / plan) * 100;
-      return pct.toFixed(1) + '%';
-    }
-
-    function renderCabinetPlans(manager) {
-      // План беремо з полів, які можна буде додати в апі:
-      // planLiters, planDeals, planFills, planWins
-      var planLiters = safeNumber(manager.planLiters);
-      var planDeals  = safeNumber(manager.planDeals);
-      var planFills  = safeNumber(manager.planFills);
-      var planWins   = safeNumber(manager.planWins);
-
-      var factLiters = safeNumber(manager.liters);
-      var factDeals  = safeNumber(manager.deals);
-      var factFills  = safeNumber(manager.newFills || manager.newFuels);
-      var factWins   = safeNumber(manager.wins);
-
-      document.getElementById('plan-liters').textContent =
-        planLiters ? formatNumber(planLiters) + ' л' : '—';
-      document.getElementById('fact-liters').textContent =
-        formatNumber(factLiters) + ' л';
-      document.getElementById('pct-liters').textContent =
-        pctFromPlan(planLiters, factLiters);
-
-      document.getElementById('plan-deals').textContent =
-        planDeals ? formatNumber(planDeals) : '—';
-      document.getElementById('fact-deals').textContent =
-        formatNumber(factDeals);
-      document.getElementById('pct-deals').textContent =
-        pctFromPlan(planDeals, factDeals);
-
-      document.getElementById('plan-fills').textContent =
-        planFills ? formatNumber(planFills) : '—';
-      document.getElementById('fact-fills').textContent =
-        formatNumber(factFills);
-      document.getElementById('pct-fills').textContent =
-        pctFromPlan(planFills, factFills);
-
-      document.getElementById('plan-wins').textContent =
-        planWins ? formatNumber(planWins) : '—';
-      document.getElementById('fact-wins').textContent =
-        formatNumber(factWins);
-      document.getElementById('pct-wins').textContent =
-        pctFromPlan(planWins, factWins);
-    }
-
-    function renderCabinetCalls(stats) {
-      if (!stats) {
-        document.getElementById('calls-total').textContent = '—';
-        document.getElementById('calls-success').textContent = '—';
-        document.getElementById('calls-avg').textContent = '—';
-        document.getElementById('calls-total-duration').textContent = '—';
-        document.getElementById('calls-note').textContent =
-          'Підключення до телефонії ще не налаштовано.';
-        return;
-      }
-
-      document.getElementById('calls-total').textContent =
-        formatNumber(stats.totalCalls || 0);
-      document.getElementById('calls-success').textContent =
-        formatNumber(stats.answeredCalls || 0) +
-        ' / ' +
-        formatNumber(stats.missedCalls || 0);
-      document.getElementById('calls-avg').textContent =
-        (stats.avgTalkTime || '—');
-      document.getElementById('calls-total-duration').textContent =
-        (stats.totalTalkTime || '—');
-      document.getElementById('calls-note').textContent =
-        'Дані дзвінків завантажені з телефонії.';
-    }
-
-    function openManagerCabinet(manager) {
-      if (!manager) return;
-      SELECTED_MANAGER = manager;
-
-      document.getElementById('cabinet-name').textContent =
-        manager.name || '';
-      document.getElementById('cabinet-office').textContent =
-        'Офіс: ' + (manager.office || '');
-      document.getElementById('cabinet-month').textContent =
-        'Місяць: ' + currentMonth;
-
-      // Бали — беремо з score (лідерборд)
-      var ranked = computeLeaderboard(MANAGERS_DATA);
-      var scoreObj = ranked.find(function(m) { return m.name === manager.name; });
-      var score = scoreObj ? Math.round(scoreObj.score * 100) : 0;
-      document.getElementById('cabinet-points').textContent =
-        score ? score : '—';
-
-      renderCabinetPlans(manager);
-
-      // дзвінки (поки що показуємо заглушку або "нема API")
-      if (!CALLS_API_URL) {
-        renderCabinetCalls(null);
-      } else {
-        loadCallStats(manager);
-      }
-
-      document.getElementById('manager-cabinet').style.display = 'block';
-    }
-
-    function loadCallStats(manager) {
-      // Коли зʼявиться Apps Script / бекенд для телефонії:
-      // очікуваний формат: ?manager=Імʼя&month=Листопад
-      var url = CALLS_API_URL +
-        '?manager=' + encodeURIComponent(manager.name || '') +
-        '&month=' + encodeURIComponent(currentMonth);
-
-      fetch(url)
-        .then(function(res) { return res.json(); })
-        .then(function(stats) {
-          renderCabinetCalls(stats);
-        })
-        .catch(function() {
-          renderCabinetCalls(null);
-        });
-    }
-
-    // ------- РЕНДЕР ВСЬОГО -------
     function renderAll() {
       var sorted = getSortedData(MANAGERS_DATA, currentSort);
       renderTopCards(sorted);
       renderTable(sorted);
       renderLeaderboard(MANAGERS_DATA);
-
-      // якщо вже був відкритий міні-кабінет, оновимо дані менеджера
-      if (SELECTED_MANAGER) {
-        var fresh = MANAGERS_DATA.find(function(m) {
-          return m.name === SELECTED_MANAGER.name;
-        });
-        if (fresh) {
-          openManagerCabinet(fresh);
-        }
-      }
     }
 
-    // ------- ЗАВАНТАЖЕННЯ ДАНИХ -------
     function loadData(month) {
       currentMonth = month;
       var errorBox = document.getElementById('error-box');
