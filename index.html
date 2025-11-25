@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <title>ALLAZS Dashboard</title>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
     * {
       box-sizing: border-box;
@@ -154,6 +151,21 @@
       margin-top: 4px;
       opacity: 0.8;
     }
+
+    .medal-cell {
+      width: 40px;
+    }
+
+    .rank-badge {
+      display: inline-block;
+      min-width: 22px;
+      text-align: center;
+      font-size: 11px;
+      padding: 2px 4px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      margin-right: 6px;
+    }
   </style>
 </head>
 
@@ -219,10 +231,23 @@
       </table>
     </div>
 
-    <!-- Графік -->
+    <!-- Лідерборд -->
     <div class="section">
-      <div class="section-title" style="margin-bottom: 12px;">Літри по менеджерах</div>
-      <canvas id="liters-chart" height="120"></canvas>
+      <div class="section-title" style="margin-bottom: 12px;">Лідерборд менеджерів</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="medal-cell">Місце</th>
+            <th>Менеджер</th>
+            <th>Офіс</th>
+            <th>Літри</th>
+            <th>Угоди</th>
+            <th>Нові заправки</th>
+            <th>Перемоги</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
     </div>
   </div>
 
@@ -232,7 +257,6 @@
 
     let currentSort = "liters";
     let currentMonth = "Листопад";
-    let litersChartInstance = null;
     let MANAGERS_DATA = [];
 
     function formatNumber(num) {
@@ -271,15 +295,14 @@
       } else if (sortKey === "deals") {
         arr.sort((a, b) => (b.deals || 0) - (a.deals || 0));
       } else if (sortKey === "fills") {
-        arr.sort((a, b) => (b.newFills || 0) - (a.newFills || 0));
+        const getFills = (m) => (m.newFills ?? m.newFuels) || 0;
+        arr.sort((a, b) => getFills(b) - getFills(a));
       }
       return arr;
     }
 
+    // Підтримка двох форматів відповіді API (з полем change або *_ChangePct)
     function pickDelta(obj, field) {
-      // Підтримує два варіанти відповіді API:
-      // 1) m.litersChangePct
-      // 2) m.change.liters
       if (obj && typeof obj[field] === "number") return obj[field];
       if (obj && obj.change && typeof obj.change[field] === "number") return obj.change[field];
       return null;
@@ -313,7 +336,7 @@
         `;
 
         const fillsCell = `
-          ${formatNumber(m.newFills || m.newFuels || 0)}
+          ${formatNumber(m.newFills ?? m.newFuels || 0)}
           ${formatDelta(fillsDelta)}
         `;
 
@@ -335,52 +358,69 @@
       });
     }
 
-    function renderChart(data) {
-      const ctx = document.getElementById("liters-chart").getContext("2d");
-      const labels = data.map((m) => m.name);
-      const liters = data.map((m) => m.liters || 0);
+    // ==== ЛІДЕРБОРД ====
 
-      if (litersChartInstance) {
-        litersChartInstance.destroy();
-      }
+    function computeLeaderboard(data) {
+      if (!data || !data.length) return [];
 
-      litersChartInstance = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [
-            {
-              label: "Літри (за місяць)",
-              data: liters
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              labels: { color: "#f5f5f5" }
-            }
-          },
-          scales: {
-            x: {
-              ticks: { color: "#f5f5f5" },
-              grid: { display: false }
-            },
-            y: {
-              ticks: { color: "#f5f5f5" },
-              grid: { color: "rgba(255,255,255,0.1)" }
-            }
-          }
-        }
+      const litersArr = data.map(m => m.liters || 0);
+      const dealsArr  = data.map(m => m.deals || 0);
+      const fillsArr  = data.map(m => (m.newFills ?? m.newFuels) || 0);
+      const winsArr   = data.map(m => m.wins || 0);
+
+      const maxLiters = Math.max(...litersArr, 0);
+      const maxDeals  = Math.max(...dealsArr, 0);
+      const maxFills  = Math.max(...fillsArr, 0);
+      const maxWins   = Math.max(...winsArr, 0);
+
+      return [...data].map(m => {
+        const litersScore = maxLiters ? (m.liters || 0) / maxLiters : 0;
+        const dealsScore  = maxDeals  ? (m.deals || 0)  / maxDeals  : 0;
+        const fillsScore  = maxFills  ? ((m.newFills ?? m.newFuels) || 0) / maxFills : 0;
+        const winsScore   = maxWins   ? (m.wins || 0)   / maxWins   : 0;
+
+        const score = (litersScore + dealsScore + fillsScore + winsScore) / 4;
+        return { ...m, leaderboardScore: score };
+      }).sort((a, b) => b.leaderboardScore - a.leaderboardScore);
+    }
+
+    function renderLeaderboard(data) {
+      const tbody = document.getElementById("leaderboard-body");
+      tbody.innerHTML = "";
+
+      const ranked = computeLeaderboard(data);
+
+      ranked.forEach((m, index) => {
+        let medal = "";
+        if (index === 0) medal = "🥇";
+        else if (index === 1) medal = "🥈";
+        else if (index === 2) medal = "🥉";
+
+        const rankNumber = index + 1;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="medal-cell">
+            <span class="rank-badge">${rankNumber}</span> ${medal}
+          </td>
+          <td>${m.name || ''}</td>
+          <td>${m.office || ''}</td>
+          <td>${formatNumber(m.liters || 0)} л</td>
+          <td>${formatNumber(m.deals || 0)}</td>
+          <td>${formatNumber(m.newFills ?? m.newFuels || 0)}</td>
+          <td>${formatNumber(m.wins || 0)}</td>
+        `;
+        tbody.appendChild(tr);
       });
     }
+
+    // ==== РЕНДЕР УСЬОГО ====
 
     function renderAll() {
       const sorted = getSortedData(MANAGERS_DATA, currentSort);
       renderTopCards(sorted);
-      renderTable(sorted);
-      renderChart(sorted);
+      renderTable(sorted);          // основна таблиця з дельтами
+      renderLeaderboard(MANAGERS_DATA); // лідерборд по сумарному скоору
     }
 
     async function loadData(month) {
