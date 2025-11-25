@@ -153,7 +153,8 @@
     }
 
     .medal-cell {
-      width: 40px;
+      width: 70px;
+      white-space: nowrap;
     }
 
     .rank-badge {
@@ -164,7 +165,7 @@
       padding: 2px 4px;
       border-radius: 999px;
       background: rgba(255,255,255,0.06);
-      margin-right: 6px;
+      margin-right: 4px;
     }
   </style>
 </head>
@@ -206,10 +207,10 @@
       </div>
     </div>
 
-    <!-- Таблиця менеджерів -->
+    <!-- РЕЗУЛЬТАТИ МЕНЕДЖЕРІВ -->
     <div class="section">
       <div class="section-header">
-        <div class="section-title">Рейтинг менеджерів</div>
+        <div class="section-title">Результати менеджерів</div>
         <select id="sort-select">
           <option value="liters">За літрами</option>
           <option value="deals">За угодами</option>
@@ -231,7 +232,7 @@
       </table>
     </div>
 
-    <!-- Лідерборд -->
+    <!-- ЛІДЕРБОРД -->
     <div class="section">
       <div class="section-title" style="margin-bottom: 12px;">Лідерборд менеджерів</div>
       <table>
@@ -244,6 +245,7 @@
             <th>Угоди</th>
             <th>Нові заправки</th>
             <th>Перемоги</th>
+            <th>Бали</th>
           </tr>
         </thead>
         <tbody id="leaderboard-body"></tbody>
@@ -252,227 +254,220 @@
   </div>
 
   <script>
-    // 🔑 Актуальний endpoint Apps Script
+    // 🔑 Твій Apps Script endpoint
     const API_URL = 'https://script.google.com/macros/s/AKfycbwGy12XHZZIWrXOA5-nRRURXfTCOJDkP1U_iuIzaPworQqq1CEDCKCh4YVNsSGHfvL-/exec';
 
-    let currentSort = "liters";
-    let currentMonth = "Листопад";
     let MANAGERS_DATA = [];
+    let currentMonth = 'Листопад';
+    let currentSort = 'liters';
 
     function formatNumber(num) {
-      if (num === null || num === undefined || isNaN(num)) return "0";
-      return Number(num).toLocaleString("uk-UA");
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('uk-UA');
+    }
+
+    function getFills(m) {
+      let v = 0;
+      if (m && m.newFills !== undefined && m.newFills !== null) {
+        v = m.newFills;
+      } else if (m && m.newFuels !== undefined && m.newFuels !== null) {
+        v = m.newFuels;
+      }
+      return Number(v) || 0;
     }
 
     function calcMetrics(data) {
-      const totalLiters = data.reduce((sum, m) => sum + (m.liters || 0), 0);
-      const totalDeals = data.reduce((sum, m) => sum + (m.deals || 0), 0);
+      const totalLiters = data.reduce((sum, m) => sum + (Number(m.liters) || 0), 0);
+      const totalDeals = data.reduce((sum, m) => sum + (Number(m.deals) || 0), 0);
       const avgLitersPerDeal = totalDeals > 0 ? totalLiters / totalDeals : 0;
       const managerCount = data.length;
       return { totalLiters, totalDeals, avgLitersPerDeal, managerCount };
     }
 
     function renderTopCards(data) {
-      const { totalLiters, totalDeals, avgLitersPerDeal, managerCount } =
-        calcMetrics(data);
-
-      document.getElementById("total-liters").textContent =
-        formatNumber(totalLiters) + " л";
-
-      document.getElementById("total-deals").textContent =
-        formatNumber(totalDeals);
-
-      document.getElementById("avg-liters-per-deal").textContent =
-        avgLitersPerDeal.toFixed(0) + " л";
-
-      document.getElementById("manager-count").textContent = managerCount;
+      const metrics = calcMetrics(data);
+      document.getElementById('total-liters').textContent =
+        formatNumber(metrics.totalLiters) + ' л';
+      document.getElementById('total-deals').textContent =
+        formatNumber(metrics.totalDeals);
+      document.getElementById('avg-liters-per-deal').textContent =
+        metrics.avgLitersPerDeal.toFixed(0) + ' л';
+      document.getElementById('manager-count').textContent =
+        metrics.managerCount;
     }
 
     function getSortedData(data, sortKey) {
-      const arr = [...data];
-      if (sortKey === "liters") {
-        arr.sort((a, b) => (b.liters || 0) - (a.liters || 0));
-      } else if (sortKey === "deals") {
-        arr.sort((a, b) => (b.deals || 0) - (a.deals || 0));
-      } else if (sortKey === "fills") {
-        const getFills = (m) => (m.newFills ?? m.newFuels) || 0;
+      const arr = data.slice();
+      if (sortKey === 'liters') {
+        arr.sort((a, b) => (Number(b.liters) || 0) - (Number(a.liters) || 0));
+      } else if (sortKey === 'deals') {
+        arr.sort((a, b) => (Number(b.deals) || 0) - (Number(a.deals) || 0));
+      } else if (sortKey === 'fills') {
         arr.sort((a, b) => getFills(b) - getFills(a));
       }
       return arr;
     }
 
-    // Підтримка двох форматів відповіді API (з полем change або *_ChangePct)
     function pickDelta(obj, field) {
-      if (obj && typeof obj[field] === "number") return obj[field];
-      if (obj && obj.change && typeof obj.change[field] === "number") return obj.change[field];
+      if (!obj) return null;
+
+      // варіант 1: окреме поле типу litersChangePct
+      if (obj[field] !== undefined && obj[field] !== null &&
+          typeof obj[field] === 'number') {
+        return obj[field];
+      }
+
+      // варіант 2: obj.change.liters
+      if (obj.change && obj.change[field] !== undefined &&
+          obj.change[field] !== null &&
+          typeof obj.change[field] === 'number') {
+        return obj.change[field];
+      }
+
       return null;
     }
 
     function formatDelta(pct) {
-      if (pct === null || pct === undefined || isNaN(pct)) return "";
-      const sign = pct > 0 ? "+" : "";
-      const cls = pct > 0 ? "delta positive" : "delta negative";
-      return `<span class="${cls}">${sign}${pct.toFixed(1)}%</span>`;
+      if (pct === null || pct === undefined || isNaN(pct)) return '';
+      const sign = pct > 0 ? '+' : '';
+      const cls = pct > 0 ? 'delta positive' : 'delta negative';
+      return '<span class="' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
     }
 
-    function renderTable(data) {
-      const tbody = document.getElementById("manager-table-body");
-      tbody.innerHTML = "";
+    function renderResultsTable(data) {
+      const tbody = document.getElementById('manager-table-body');
+      tbody.innerHTML = '';
 
-      data.forEach((m) => {
-        const litersDelta = pickDelta(m, "litersChangePct") ?? pickDelta(m, "liters");
-        const dealsDelta  = pickDelta(m, "dealsChangePct")  ?? pickDelta(m, "deals");
-        const fillsDelta  = pickDelta(m, "newFillsChangePct") ?? pickDelta(m, "newFuels");
-        const winsDelta   = pickDelta(m, "winsChangePct")   ?? pickDelta(m, "wins");
+      for (var i = 0; i < data.length; i++) {
+        var m = data[i];
 
-        const litersCell = `
-          ${formatNumber(m.liters || 0)} л
-          ${formatDelta(litersDelta)}
-        `;
+        var litersDelta = pickDelta(m, 'litersChangePct') || pickDelta(m, 'liters');
+        var dealsDelta  = pickDelta(m, 'dealsChangePct')  || pickDelta(m, 'deals');
+        var fillsDelta  = pickDelta(m, 'newFillsChangePct') || pickDelta(m, 'newFuels');
+        var winsDelta   = pickDelta(m, 'winsChangePct')   || pickDelta(m, 'wins');
 
-        const dealsCell = `
-          ${formatNumber(m.deals || 0)}
-          ${formatDelta(dealsDelta)}
-        `;
+        var litersCell = formatNumber(m.liters || 0) + ' л ' + formatDelta(litersDelta);
+        var dealsCell  = formatNumber(m.deals || 0) + ' ' + formatDelta(dealsDelta);
+        var fillsCell  = formatNumber(getFills(m)) + ' ' + formatDelta(fillsDelta);
+        var winsCell   = formatNumber(m.wins || 0) + ' ' + formatDelta(winsDelta);
 
-        const fillsCell = `
-          ${formatNumber(m.newFills ?? m.newFuels || 0)}
-          ${formatDelta(fillsDelta)}
-        `;
-
-        const winsCell = `
-          ${formatNumber(m.wins || 0)}
-          ${formatDelta(winsDelta)}
-        `;
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${m.name || ''}</td>
-          <td>${m.office || ''}</td>
-          <td>${litersCell}</td>
-          <td>${dealsCell}</td>
-          <td>${fillsCell}</td>
-          <td>${winsCell}</td>
-        `;
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + (m.name || '') + '</td>' +
+          '<td>' + (m.office || '') + '</td>' +
+          '<td>' + litersCell + '</td>' +
+          '<td>' + dealsCell + '</td>' +
+          '<td>' + fillsCell + '</td>' +
+          '<td>' + winsCell + '</td>';
         tbody.appendChild(tr);
-      });
+      }
     }
 
     // ==== ЛІДЕРБОРД ====
 
-    function computeLeaderboard(data) {
-      if (!data || !data.length) return [];
-
-      const litersArr = data.map(m => m.liters || 0);
-      const dealsArr  = data.map(m => m.deals || 0);
-      const fillsArr  = data.map(m => (m.newFills ?? m.newFuels) || 0);
-      const winsArr   = data.map(m => m.wins || 0);
-
-      const maxLiters = Math.max(...litersArr, 0);
-      const maxDeals  = Math.max(...dealsArr, 0);
-      const maxFills  = Math.max(...fillsArr, 0);
-      const maxWins   = Math.max(...winsArr, 0);
-
-      return [...data].map(m => {
-        const litersScore = maxLiters ? (m.liters || 0) / maxLiters : 0;
-        const dealsScore  = maxDeals  ? (m.deals || 0)  / maxDeals  : 0;
-        const fillsScore  = maxFills  ? ((m.newFills ?? m.newFuels) || 0) / maxFills : 0;
-        const winsScore   = maxWins   ? (m.wins || 0)   / maxWins   : 0;
-
-        const score = (litersScore + dealsScore + fillsScore + winsScore) / 4;
-        return { ...m, leaderboardScore: score };
-      }).sort((a, b) => b.leaderboardScore - a.leaderboardScore);
+    // Бальна система:
+    // score = liters/100 + deals*5 + fills*20 + wins*50
+    function computeScore(m) {
+      var liters = Number(m.liters) || 0;
+      var deals  = Number(m.deals) || 0;
+      var fills  = getFills(m);
+      var wins   = Number(m.wins) || 0;
+      return liters / 100 + deals * 5 + fills * 20 + wins * 50;
     }
 
     function renderLeaderboard(data) {
-      const tbody = document.getElementById("leaderboard-body");
-      tbody.innerHTML = "";
+      var tbody = document.getElementById('leaderboard-body');
+      tbody.innerHTML = '';
 
-      const ranked = computeLeaderboard(data);
+      var arr = data.slice();
+      for (var i = 0; i < arr.length; i++) {
+        arr[i].score = computeScore(arr[i]);
+      }
+      arr.sort(function(a, b) { return b.score - a.score; });
 
-      ranked.forEach((m, index) => {
-        let medal = "";
-        if (index === 0) medal = "🥇";
-        else if (index === 1) medal = "🥈";
-        else if (index === 2) medal = "🥉";
+      for (var j = 0; j < arr.length; j++) {
+        var m = arr[j];
+        var place = j + 1;
+        var medal = '';
+        if (place === 1) medal = '🥇';
+        else if (place === 2) medal = '🥈';
+        else if (place === 3) medal = '🥉';
 
-        const rankNumber = index + 1;
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="medal-cell">
-            <span class="rank-badge">${rankNumber}</span> ${medal}
-          </td>
-          <td>${m.name || ''}</td>
-          <td>${m.office || ''}</td>
-          <td>${formatNumber(m.liters || 0)} л</td>
-          <td>${formatNumber(m.deals || 0)}</td>
-          <td>${formatNumber(m.newFills ?? m.newFuels || 0)}</td>
-          <td>${formatNumber(m.wins || 0)}</td>
-        `;
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td class="medal-cell">' +
+            '<span class="rank-badge">' + place + '</span> ' + medal +
+          '</td>' +
+          '<td>' + (m.name || '') + '</td>' +
+          '<td>' + (m.office || '') + '</td>' +
+          '<td>' + formatNumber(m.liters || 0) + ' л</td>' +
+          '<td>' + formatNumber(m.deals || 0) + '</td>' +
+          '<td>' + formatNumber(getFills(m)) + '</td>' +
+          '<td>' + formatNumber(m.wins || 0) + '</td>' +
+          '<td>' + m.score.toFixed(1) + '</td>';
         tbody.appendChild(tr);
-      });
+      }
     }
 
-    // ==== РЕНДЕР УСЬОГО ====
+    // ==== РЕНДЕР ВСЬОГО ====
 
     function renderAll() {
-      const sorted = getSortedData(MANAGERS_DATA, currentSort);
+      var sorted = getSortedData(MANAGERS_DATA, currentSort);
       renderTopCards(sorted);
-      renderTable(sorted);          // основна таблиця з дельтами
-      renderLeaderboard(MANAGERS_DATA); // лідерборд по сумарному скоору
+      renderResultsTable(sorted);
+      renderLeaderboard(MANAGERS_DATA);
     }
 
     async function loadData(month) {
       currentMonth = month;
-      const errorBox = document.getElementById("error-box");
-      errorBox.style.display = "none";
-      errorBox.textContent = "";
+      var errorBox = document.getElementById('error-box');
+      errorBox.style.display = 'none';
+      errorBox.textContent = '';
 
-      const url = API_URL + '?month=' + encodeURIComponent(month);
+      var url = API_URL + '?month=' + encodeURIComponent(month);
 
       try {
-        const res = await fetch(url);
-        const text = await res.text();
+        var res = await fetch(url);
+        var text = await res.text();
 
-        let data;
+        var data;
         try {
           data = JSON.parse(text);
         } catch (e) {
-          console.error("Не вдалось розпарсити JSON:", text);
-          throw new Error("Невірний формат відповіді API");
+          console.error('JSON parse error:', text);
+          throw new Error('Невірний формат відповіді API');
         }
 
         if (!Array.isArray(data)) {
-          console.error("API повернув не масив:", data);
-          throw new Error("API повернув помилку або неочікувані дані");
+          console.error('API не повернув масив:', data);
+          throw new Error('API повернув помилку або неочікувані дані');
         }
 
         MANAGERS_DATA = data;
         renderAll();
       } catch (err) {
-        console.error("Помилка завантаження даних з API:", err);
-        errorBox.textContent = "Помилка завантаження даних з API. Перевір Apps Script або доступ до таблиці.";
-        errorBox.style.display = "block";
+        console.error('Помилка API:', err);
+        errorBox.textContent =
+          'Помилка завантаження даних з API. Перевір Apps Script або доступ до таблиці.';
+        errorBox.style.display = 'block';
         MANAGERS_DATA = [];
         renderAll();
       }
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const sortSelect = document.getElementById("sort-select");
-      sortSelect.addEventListener("change", (e) => {
+    document.addEventListener('DOMContentLoaded', function () {
+      var sortSelect = document.getElementById('sort-select');
+      sortSelect.addEventListener('change', function (e) {
         currentSort = e.target.value;
         renderAll();
       });
 
-      const monthSelect = document.getElementById("month-select");
+      var monthSelect = document.getElementById('month-select');
       monthSelect.value = currentMonth;
-      monthSelect.addEventListener("change", (e) => {
+      monthSelect.addEventListener('change', function (e) {
         loadData(e.target.value);
       });
 
-      // Стартуємо з Листопада
       loadData(currentMonth);
     });
   </script>
