@@ -1,326 +1,135 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8" />
-  <title>Кабінет менеджера — ALLAZS Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- якщо у тебе є спільний styles.css з дашбордом — залиш це підключення -->
-  <link rel="stylesheet" href="styles.css" />
-  <style>
-    /* Трошки базового оформлення, якщо свого CSS нема */
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #050713;
-      color: #f9fafb;
-    }
-    .page {
-      max-width: 1100px;
-      margin: 24px auto 48px;
-      padding: 0 16px;
-    }
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .top-bar h1 {
-      font-size: 28px;
-      margin: 0 0 4px;
-    }
-    .top-bar-sub {
-      font-size: 14px;
-      color: #9ca3af;
-    }
-    a.back-link {
-      font-size: 14px;
-      color: #93c5fd;
-      text-decoration: none;
-    }
-    a.back-link:hover { text-decoration: underline; }
+<script>
+  // 🔑 ТОЙ САМИЙ URL, ЩО І В index.html
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzGFLQHObPRHPaglIBqlW6_AhPXSz3TQWyhMPwitFyOlQw3xjCFYMOoaDbIQa0u-315/exec';
 
-    .cards-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .card {
-      background: radial-gradient(circle at top left, #111827, #020617);
-      border-radius: 16px;
-      padding: 18px 20px;
-      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.08);
-    }
-    .card-title {
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #9ca3af;
-      margin-bottom: 12px;
-    }
-    .card-value {
-      font-size: 24px;
-      font-weight: 600;
-    }
-    .card-sub {
-      font-size: 13px;
-      color: #9ca3af;
-      margin-top: 6px;
+  function getQueryParams() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      // підтримуємо і name, і manager – раптом десь залишився старий формат
+      name: params.get('name') || params.get('manager') || '',
+      month: params.get('month') || 'Листопад'
+    };
+  }
+
+  function formatNumber(n) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('uk-UA');
+  }
+
+  function calcPercent(plan, fact) {
+    const p = Number(plan) || 0;
+    const f = Number(fact) || 0;
+    if (!p) return '—';
+    const v = (f / p) * 100;
+    return v.toFixed(1).replace('.', ',') + ' %';
+  }
+
+  function diffPct(current, prev) {
+    current = Number(current) || 0;
+    prev = Number(prev) || 0;
+    if (!prev) return null;
+    return ((current - prev) / prev) * 100;
+  }
+
+  function formatDiffText(current, prev) {
+    const pct = diffPct(current, prev);
+    if (pct === null) return '—';
+    const sign = pct > 0 ? '+' : '';
+    return sign + pct.toFixed(1).replace('.', ',') + ' %';
+  }
+
+  function computeScore(m) {
+    const wLiters = 4, wDeals = 3, wFills = 2, wWins = 1;
+    const liters = Number(m.liters) || 0;
+    const deals  = Number(m.deals)  || 0;
+    const fills  = Number(m.fills)  || 0;
+    const wins   = Number(m.wins)   || 0;
+
+    // нормалізація не ідеальна, але для одного менеджера ок
+    return liters * wLiters + deals * wDeals + fills * wFills + wins * wWins;
+  }
+
+  async function loadManagerPage() {
+    const { name, month } = getQueryParams();
+    const errorBox = document.getElementById('error-box');
+
+    if (!name) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Не передано параметр name у URL.';
+      return;
     }
 
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 28px 0 12px;
-    }
+    try {
+      const resp = await fetch(`${API_URL}?month=${encodeURIComponent(month)}`);
+      if (!resp.ok) throw new Error('Помилка запиту: ' + resp.status);
+      const data = await resp.json();
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-    thead {
-      background: rgba(15, 23, 42, 0.9);
-    }
-    th, td {
-      padding: 10px 12px;
-      text-align: left;
-    }
-    th {
-      font-weight: 500;
-      color: #9ca3af;
-      border-bottom: 1px solid rgba(55, 65, 81, 0.9);
-    }
-    tbody tr:nth-child(odd) {
-      background: rgba(15, 23, 42, 0.7);
-    }
-    tbody tr:nth-child(even) {
-      background: rgba(15, 23, 42, 0.4);
-    }
-    tbody tr:last-child td {
-      border-bottom-left-radius: 12px;
-      border-bottom-right-radius: 12px;
-    }
-
-    .muted {
-      color: #9ca3af;
-      font-size: 13px;
-    }
-    .error {
-      margin-top: 18px;
-      font-size: 14px;
-      color: #fca5a5;
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-    }
-    .pill span.value {
-      font-weight: 500;
-    }
-
-    @media (max-width: 640px) {
-      .top-bar {
-        flex-direction: column;
-        align-items: flex-start;
+      if (!data || !Array.isArray(data.managers)) {
+        throw new Error('Некоректна відповідь API.');
       }
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="top-bar">
-      <div>
-        <h1 id="manager-name">Менеджер</h1>
-        <div class="top-bar-sub">
-          <span id="manager-office">Офіс</span> ·
-          <span id="manager-month">Місяць</span>
-        </div>
-      </div>
-      <div>
-        <a href="index.html" class="back-link">← Повернутися до дашборду</a>
-      </div>
-    </div>
 
-    <div class="cards-row">
-      <div class="card">
-        <div class="card-title">СУМАРНІ БАЛИ</div>
-        <div class="card-value" id="score">—</div>
-        <div class="card-sub">
-          Розраховано за літрами, угодами, новими заправками та перемогами.
-        </div>
-      </div>
+      const mgr = data.managers.find(m => m.name === name);
 
-      <div class="card">
-        <div class="card-title">ЛІТРИ / УГОДИ</div>
-        <div class="card-value" id="liters-deals">—</div>
-        <div class="card-sub" id="fills-wins-sub">Нові заправки: —, перемоги: —</div>
-      </div>
-    </div>
+      document.getElementById('manager-name').textContent = name;
+      document.getElementById('manager-office').textContent = mgr ? (mgr.office || '—') : '—';
+      document.getElementById('manager-month').textContent = month;
 
-    <div class="card">
-      <div class="section-title">План / факт за місяць</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Метріка</th>
-            <th>План</th>
-            <th>Факт</th>
-            <th>%</th>
-          </tr>
-        </thead>
-        <tbody id="plan-table-body">
-          <!-- буде заповнено JS -->
-        </tbody>
-      </table>
-    </div>
-
-    <div class="card" style="margin-top: 24px;">
-      <div class="section-title">Статистика дзвінків</div>
-      <p class="muted">
-        Поки що інтеграція з телефонією не налаштована. Коли підключимо API телефонії,
-        тут зʼявиться статистика: загальна кількість дзвінків, успішні / пропущені,
-        середня та загальна тривалість розмов.
-      </p>
-      <p class="muted">
-        Якщо хочеш — далі можемо докрутити і це, коли дасте доступ до API телефонії. 🙂
-      </p>
-    </div>
-
-    <div id="error-box" class="error" style="display:none;"></div>
-  </div>
-
-  <script>
-    // 🔗 ВСТАВ ТУТ ТОЙ САМИЙ URL, ЯКИЙ ВИКОРИСТОВУЄ ДАШБОРД
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwTEohP5g80dh3_FapiZ56-L-M5z4DJK0iGjPq0tgdIjwBzP06Wt9V64TX0Z7NXZVWS/exec'; // <- заміни
-
-    function getQueryParams() {
-      const params = new URLSearchParams(window.location.search);
-      return {
-        manager: params.get('manager') || '',
-        month: params.get('month') || 'Листопад',
-      };
-    }
-
-    function formatNumber(n) {
-      if (n === null || n === undefined || isNaN(n)) return '—';
-      return Number(n).toLocaleString('uk-UA');
-    }
-
-    function formatPercent(v) {
-      if (v === null || v === undefined || isNaN(v)) return '—';
-      return v.toFixed(1).replace('.', ',') + ' %';
-    }
-
-    function calcPlanPercent(plan, fact) {
-      const p = Number(plan) || 0;
-      const f = Number(fact) || 0;
-      if (!p) return '—';
-      return formatPercent((f / p) * 100);
-    }
-
-    async function loadManagerPage() {
-      const { manager, month } = getQueryParams();
-      const errorBox = document.getElementById('error-box');
-
-      if (!manager) {
+      if (!mgr) {
         errorBox.style.display = 'block';
-        errorBox.textContent = 'Не передано параметр manager у URL.';
+        errorBox.textContent = `Менеджера "${name}" не знайдено у даних за цей місяць.`;
         return;
       }
 
-      try {
-        const resp = await fetch(`${API_URL}?month=${encodeURIComponent(month)}`);
-        if (!resp.ok) {
-          throw new Error('Помилка запиту: ' + resp.status);
-        }
-        const data = await resp.json();
+      // картки
+      const score = computeScore(mgr);
+      document.getElementById('score').textContent = formatNumber(Math.round(score));
 
-        if (!data || !Array.isArray(data.managers)) {
-          throw new Error('Некоректна відповідь API.');
-        }
+      document.getElementById('liters-deals').textContent =
+        `${formatNumber(mgr.liters)} л / ${formatNumber(mgr.deals)} угод`;
 
-        const mgr = data.managers.find(m => m.name === manager);
+      document.getElementById('fills-wins-sub').textContent =
+        `Нові заправки: ${formatNumber(mgr.fills)}, перемоги: ${formatNumber(mgr.wins)}`;
 
-        document.getElementById('manager-name').textContent = manager;
-        document.getElementById('manager-office').textContent = mgr ? mgr.office : '—';
-        document.getElementById('manager-month').textContent = month;
+      // таблиця план / факт
+      const rows = [
+        { label: 'Літри',        plan: mgr.planLiters, fact: mgr.liters },
+        { label: 'Угоди',        plan: mgr.planDeals,  fact: mgr.deals },
+        { label: 'Нові заправки',plan: mgr.planFills,  fact: mgr.fills },
+        { label: 'Перемоги',     plan: mgr.planWins,   fact: mgr.wins }
+      ];
 
-        if (!mgr) {
-          errorBox.style.display = 'block';
-          errorBox.textContent = `Менеджера "${manager}" не знайдено у даних за цей місяць.`;
-          return;
-        }
+      const tbody = document.getElementById('plan-table-body');
+      tbody.innerHTML = '';
 
-        // Верхні картки
-        document.getElementById('score').textContent = formatNumber(mgr.score);
-        document.getElementById('liters-deals').textContent =
-          `${formatNumber(mgr.liters)} л / ${formatNumber(mgr.deals)} угод`;
-        document.getElementById('fills-wins-sub').textContent =
-          `Нові заправки: ${formatNumber(mgr.newFills)}, перемоги: ${formatNumber(mgr.wins)}`;
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
 
-        // Таблиця план / факт
-        const rows = [
-          {
-            label: 'Літри',
-            plan: mgr.planLiters,
-            fact: mgr.liters,
-          },
-          {
-            label: 'Угоди',
-            plan: mgr.planDeals,
-            fact: mgr.deals,
-          },
-          {
-            label: 'Нові заправки',
-            plan: mgr.planFills,
-            fact: mgr.newFills,
-          },
-          {
-            label: 'Перемоги',
-            plan: mgr.planWins,
-            fact: mgr.wins,
-          },
-        ];
+        const tdMetric = document.createElement('td');
+        tdMetric.textContent = row.label;
 
-        const tbody = document.getElementById('plan-table-body');
-        tbody.innerHTML = '';
+        const tdPlan = document.createElement('td');
+        tdPlan.textContent = row.plan ? formatNumber(row.plan) : '—';
 
-        rows.forEach(row => {
-          const tr = document.createElement('tr');
+        const tdFact = document.createElement('td');
+        tdFact.textContent = formatNumber(row.fact);
 
-          const tdMetric = document.createElement('td');
-          tdMetric.textContent = row.label;
+        const tdPercent = document.createElement('td');
+        tdPercent.textContent = calcPercent(row.plan, row.fact);
 
-          const tdPlan = document.createElement('td');
-          tdPlan.textContent = row.plan ? formatNumber(row.plan) : '—';
+        tr.appendChild(tdMetric);
+        tr.appendChild(tdPlan);
+        tr.appendChild(tdFact);
+        tr.appendChild(tdPercent);
+        tbody.appendChild(tr);
+      });
 
-          const tdFact = document.createElement('td');
-          tdFact.textContent = formatNumber(row.fact);
-
-          const tdPercent = document.createElement('td');
-          tdPercent.textContent = calcPlanPercent(row.plan, row.fact);
-
-          tr.appendChild(tdMetric);
-          tr.appendChild(tdPlan);
-          tr.appendChild(tdFact);
-          tr.appendChild(tdPercent);
-          tbody.appendChild(tr);
-        });
-
-      } catch (err) {
-        console.error(err);
-        errorBox.style.display = 'block';
-        errorBox.textContent = 'Сталася помилка при завантаженні даних: ' + err.message;
-      }
+    } catch (err) {
+      console.error(err);
+      errorBox.style.display = 'block';
+      errorBox.textContent =
+        'Сталася помилка при завантаженні даних: ' + err.message;
     }
+  }
 
-    document.addEventListener('DOMContentLoaded', loadManagerPage);
-  </script>
-</body>
-</html>
+  document.addEventListener('DOMContentLoaded', loadManagerPage);
+</script>
