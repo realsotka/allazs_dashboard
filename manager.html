@@ -1,14 +1,18 @@
 <script>
-  // 🔑 ТОЙ САМИЙ URL, ЩО І В index.html
+  // 🔗 той самий URL, що й у index.html
   const API_URL = 'https://script.google.com/macros/s/AKfycbzGFLQHObPRHPaglIBqlW6_AhPXSz3TQWyhMPwitFyOlQw3xjCFYMOoaDbIQa0u-315/exec';
 
   function getQueryParams() {
     const params = new URLSearchParams(window.location.search);
     return {
-      // підтримуємо і name, і manager – раптом десь залишився старий формат
-      name: params.get('name') || params.get('manager') || '',
-      month: params.get('month') || 'Листопад'
+      name: params.get('name') || '',      // з URL: ?name=...
+      month: params.get('month') || 'Листопад',
     };
+  }
+
+  function safeNumber(x) {
+    const n = Number(x);
+    return isNaN(n) ? 0 : n;
   }
 
   function formatNumber(n) {
@@ -16,37 +20,45 @@
     return Number(n).toLocaleString('uk-UA');
   }
 
-  function calcPercent(plan, fact) {
-    const p = Number(plan) || 0;
-    const f = Number(fact) || 0;
-    if (!p) return '—';
-    const v = (f / p) * 100;
+  function formatPercent(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
     return v.toFixed(1).replace('.', ',') + ' %';
   }
 
-  function diffPct(current, prev) {
-    current = Number(current) || 0;
-    prev = Number(prev) || 0;
-    if (!prev) return null;
-    return ((current - prev) / prev) * 100;
+  function calcPlanPercent(plan, fact) {
+    const p = Number(plan) || 0;
+    const f = Number(fact) || 0;
+    if (!p) return '—';
+    return formatPercent((f / p) * 100);
   }
 
-  function formatDiffText(current, prev) {
-    const pct = diffPct(current, prev);
-    if (pct === null) return '—';
-    const sign = pct > 0 ? '+' : '';
-    return sign + pct.toFixed(1).replace('.', ',') + ' %';
-  }
+  // Та ж сама логіка балів, що й у дашборді
+  function computeLeaderboardScores(data) {
+    if (!data || !data.length) return [];
 
-  function computeScore(m) {
+    let maxLiters = 0, maxDeals = 0, maxFills = 0, maxWins = 0;
+    data.forEach(m => {
+      maxLiters = Math.max(maxLiters, safeNumber(m.liters));
+      maxDeals  = Math.max(maxDeals,  safeNumber(m.deals));
+      maxFills  = Math.max(maxFills,  safeNumber(m.newFills || m.newFuels));
+      maxWins   = Math.max(maxWins,   safeNumber(m.wins));
+    });
+
     const wLiters = 4, wDeals = 3, wFills = 2, wWins = 1;
-    const liters = Number(m.liters) || 0;
-    const deals  = Number(m.deals)  || 0;
-    const fills  = Number(m.fills)  || 0;
-    const wins   = Number(m.wins)   || 0;
 
-    // нормалізація не ідеальна, але для одного менеджера ок
-    return liters * wLiters + deals * wDeals + fills * wFills + wins * wWins;
+    return data.map(m => {
+      const litersNorm = maxLiters ? safeNumber(m.liters) / maxLiters : 0;
+      const dealsNorm  = maxDeals  ? safeNumber(m.deals)  / maxDeals  : 0;
+      const fillsNorm  = maxFills  ? safeNumber(m.newFills || m.newFuels) / maxFills : 0;
+      const winsNorm   = maxWins   ? safeNumber(m.wins)   / maxWins   : 0;
+
+      const score = litersNorm * wLiters +
+                    dealsNorm  * wDeals  +
+                    fillsNorm  * wFills  +
+                    winsNorm   * wWins;
+
+      return { ...m, score };
+    }).sort((a, b) => b.score - a.score);
   }
 
   async function loadManagerPage() {
@@ -61,18 +73,29 @@
 
     try {
       const resp = await fetch(`${API_URL}?month=${encodeURIComponent(month)}`);
-      if (!resp.ok) throw new Error('Помилка запиту: ' + resp.status);
-      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error('Помилка запиту: ' + resp.status);
+      }
 
-      if (!data || !Array.isArray(data.managers)) {
+      const text = await resp.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('JSON parse error:', text);
         throw new Error('Некоректна відповідь API.');
       }
 
-      const mgr = data.managers.find(m => m.name === name);
+      if (!Array.isArray(data)) {
+        throw new Error('Некоректна відповідь API.');
+      }
 
-      document.getElementById('manager-name').textContent = name;
+      // шукаємо менеджера за імʼям
+      const mgr = data.find(m => m.name === name);
+
+      document.getElementById('manager-name').textContent   = name;
       document.getElementById('manager-office').textContent = mgr ? (mgr.office || '—') : '—';
-      document.getElementById('manager-month').textContent = month;
+      document.getElementById('manager-month').textContent  = month;
 
       if (!mgr) {
         errorBox.style.display = 'block';
@@ -80,22 +103,24 @@
         return;
       }
 
-      // картки
-      const score = computeScore(mgr);
-      document.getElementById('score').textContent = formatNumber(Math.round(score));
+      // --- Сумарні бали (та ж формула, що в дашборді) ---
+      const scored = computeLeaderboardScores(data);
+      const scoredMgr = scored.find(m => m.name === name);
+      const scoreValue = scoredMgr ? Math.round(scoredMgr.score * 100) : null;
+      document.getElementById('score').textContent = scoreValue !== null ? formatNumber(scoreValue) : '—';
 
+      // --- Верхня картка "Літри / угоди" ---
       document.getElementById('liters-deals').textContent =
         `${formatNumber(mgr.liters)} л / ${formatNumber(mgr.deals)} угод`;
-
       document.getElementById('fills-wins-sub').textContent =
-        `Нові заправки: ${formatNumber(mgr.fills)}, перемоги: ${formatNumber(mgr.wins)}`;
+        `Нові заправки: ${formatNumber(mgr.newFills)}, перемоги: ${formatNumber(mgr.wins)}`;
 
-      // таблиця план / факт
+      // --- Таблиця план / факт ---
       const rows = [
         { label: 'Літри',        plan: mgr.planLiters, fact: mgr.liters },
         { label: 'Угоди',        plan: mgr.planDeals,  fact: mgr.deals },
-        { label: 'Нові заправки',plan: mgr.planFills,  fact: mgr.fills },
-        { label: 'Перемоги',     plan: mgr.planWins,   fact: mgr.wins }
+        { label: 'Нові заправки',plan: mgr.planFills,  fact: mgr.newFills },
+        { label: 'Перемоги',     plan: mgr.planWins,   fact: mgr.wins },
       ];
 
       const tbody = document.getElementById('plan-table-body');
@@ -108,13 +133,13 @@
         tdMetric.textContent = row.label;
 
         const tdPlan = document.createElement('td');
-        tdPlan.textContent = row.plan ? formatNumber(row.plan) : '—';
+        tdPlan.textContent = row.plan != null ? formatNumber(row.plan) : '—';
 
         const tdFact = document.createElement('td');
         tdFact.textContent = formatNumber(row.fact);
 
         const tdPercent = document.createElement('td');
-        tdPercent.textContent = calcPercent(row.plan, row.fact);
+        tdPercent.textContent = calcPlanPercent(row.plan, row.fact);
 
         tr.appendChild(tdMetric);
         tr.appendChild(tdPlan);
@@ -126,8 +151,7 @@
     } catch (err) {
       console.error(err);
       errorBox.style.display = 'block';
-      errorBox.textContent =
-        'Сталася помилка при завантаженні даних: ' + err.message;
+      errorBox.textContent = 'Сталася помилка при завантаженні даних: ' + err.message;
     }
   }
 
