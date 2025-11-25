@@ -1,197 +1,5 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8" />
-  <title>ALLAZS Dashboard</title>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Стилі -->
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      background-color: #0b0b0f;
-      color: #f5f5f5;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 32px;
-    }
-
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      opacity: 0.7;
-      margin-bottom: 24px;
-    }
-
-    .layout {
-      max-width: 1200px;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .card {
-      background: linear-gradient(135deg, #14141b, #111117);
-      padding: 18px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    }
-
-    .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      opacity: 0.6;
-      margin-bottom: 6px;
-      letter-spacing: 0.07em;
-    }
-
-    .value {
-      font-size: 24px;
-      font-weight: 700;
-    }
-
-    .section {
-      background: #101018;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.06);
-      padding: 18px;
-      margin-bottom: 24px;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    select {
-      background: #181824;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #f5f5f5;
-      padding: 6px 10px;
-      font-size: 13px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    th, td {
-      padding: 8px 10px;
-      text-align: left;
-    }
-
-    thead {
-      background: #181824;
-    }
-
-    tbody tr:nth-child(even) {
-      background: rgba(255,255,255,0.02);
-    }
-
-    tbody tr:hover {
-      background: rgba(255,255,255,0.06);
-    }
-
-    .delta {
-      font-size: 11px;
-      margin-left: 6px;
-    }
-
-    .delta.positive {
-      color: #4caf50;
-    }
-
-    .delta.negative {
-      color: #f44336;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="layout">
-    <h1>ALLAZS Dashboard</h1>
-    <div class="subtitle">Панель ефективності менеджерів. Дані з Google Sheets.</div>
-
-    <!-- Картки з метриками -->
-    <div class="cards">
-      <div class="card">
-        <div class="label">Усього літрів (місяць)</div>
-        <div class="value" id="total-liters">–</div>
-      </div>
-      <div class="card">
-        <div class="label">Усього угод</div>
-        <div class="value" id="total-deals">–</div>
-      </div>
-      <div class="card">
-        <div class="label">Середній літраж на угоду</div>
-        <div class="value" id="avg-liters-per-deal">–</div>
-      </div>
-      <div class="card">
-        <div class="label">Кількість менеджерів</div>
-        <div class="value" id="manager-count">–</div>
-      </div>
-    </div>
-
-    <!-- Таблиця менеджерів -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-title">Рейтинг менеджерів</div>
-        <select id="sort-select">
-          <option value="liters">За літрами</option>
-          <option value="deals">За угодами</option>
-          <option value="fills">За новими заправками</option>
-        </select>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Менеджер</th>
-            <th>Офіс</th>
-            <th>Літри</th>
-            <th>Угоди</th>
-            <th>Нові заправки</th>
-            <th>Перемоги</th>
-          </tr>
-        </thead>
-        <tbody id="manager-table-body"></tbody>
-      </table>
-    </div>
-
-    <!-- Графік -->
-    <div class="section">
-      <div class="section-title" style="margin-bottom: 12px;">Літри по менеджерах</div>
-      <canvas id="liters-chart" height="120"></canvas>
-    </div>
-  </div>
-
-  <!-- JS -->
   <script>
-    // 👉 Твій endpoint з Apps Script
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxG1A27GfDcM79U7QMx7VANay6S6P2PAhie-k4fcoRi4N3_FoUW_cxr5T-IYXwJy3ZN/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzkMgedZCieqr3DWIfrzOI4URMbxw9JU5NGE0D8ALfU3exX7Qt4Ji_H5IeeYV3HSsri/exec';
 
     let currentSort = "liters";
     let litersChartInstance = null;
@@ -249,19 +57,34 @@
       tbody.innerHTML = "";
 
       data.forEach((m) => {
+        const litersCell = `
+          ${formatNumber(m.liters || 0)} л
+          ${formatDelta(m.litersChangePct)}
+        `;
+
         const dealsCell = `
           ${formatNumber(m.deals || 0)}
           ${formatDelta(m.dealsChangePct)}
+        `;
+
+        const fillsCell = `
+          ${formatNumber(m.newFills || 0)}
+          ${formatDelta(m.newFillsChangePct)}
+        `;
+
+        const winsCell = `
+          ${formatNumber(m.wins || 0)}
+          ${formatDelta(m.winsChangePct)}
         `;
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${m.name || ''}</td>
           <td>${m.office || ''}</td>
-          <td>${formatNumber(m.liters || 0)} л</td>
+          <td>${litersCell}</td>
           <td>${dealsCell}</td>
-          <td>${formatNumber(m.newFills || 0)}</td>
-          <td>${formatNumber(m.wins || 0)}</td>
+          <td>${fillsCell}</td>
+          <td>${winsCell}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -336,5 +159,3 @@
       loadData();
     });
   </script>
-</body>
-</html>
