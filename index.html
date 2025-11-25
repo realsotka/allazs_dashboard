@@ -5,9 +5,7 @@
   <title>ALLAZS Dashboard</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       background-color: #0b0b0f;
@@ -28,9 +26,7 @@
       margin-bottom: 12px;
     }
 
-    .layout {
-      max-width: 1200px;
-    }
+    .layout { max-width: 1200px; }
 
     .top-row {
       display: flex;
@@ -89,6 +85,15 @@
       font-weight: 700;
     }
 
+    .card-delta {
+      font-size: 12px;
+      margin-top: 4px;
+      opacity: 0.9;
+    }
+
+    .card-delta.positive { color: #4caf50; }
+    .card-delta.negative { color: #f44336; }
+
     .section {
       background: #101018;
       border-radius: 16px;
@@ -137,13 +142,8 @@
       margin-left: 6px;
     }
 
-    .delta.positive {
-      color: #4caf50;
-    }
-
-    .delta.negative {
-      color: #f44336;
-    }
+    .delta.positive { color: #4caf50; }
+    .delta.negative { color: #f44336; }
 
     .error-message {
       color: #ff6666;
@@ -152,10 +152,7 @@
       opacity: 0.8;
     }
 
-    .medal-cell {
-      width: 70px;
-      white-space: nowrap;
-    }
+    .medal-cell { width: 52px; }
 
     .rank-badge {
       display: inline-block;
@@ -166,6 +163,16 @@
       border-radius: 999px;
       background: rgba(255,255,255,0.06);
       margin-right: 4px;
+    }
+
+    .score-pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      margin-left: 6px;
+      opacity: 0.8;
     }
   </style>
 </head>
@@ -187,19 +194,22 @@
       </div>
     </div>
 
-    <!-- Картки з метриками -->
+    <!-- Картки -->
     <div class="cards">
       <div class="card">
         <div class="label">Усього літрів (місяць)</div>
         <div class="value" id="total-liters">–</div>
+        <div class="card-delta" id="total-liters-delta"></div>
       </div>
       <div class="card">
         <div class="label">Усього угод</div>
         <div class="value" id="total-deals">–</div>
+        <div class="card-delta" id="total-deals-delta"></div>
       </div>
       <div class="card">
-        <div class="label">Середній літраж на угоду</div>
-        <div class="value" id="avg-liters-per-deal">–</div>
+        <div class="label">Усього нових заправок</div>
+        <div class="value" id="total-fills">–</div>
+        <div class="card-delta" id="total-fills-delta"></div>
       </div>
       <div class="card">
         <div class="label">Кількість менеджерів</div>
@@ -207,7 +217,7 @@
       </div>
     </div>
 
-    <!-- РЕЗУЛЬТАТИ МЕНЕДЖЕРІВ -->
+    <!-- РЕЗУЛЬТАТИ менеджерів -->
     <div class="section">
       <div class="section-header">
         <div class="section-title">Результати менеджерів</div>
@@ -219,14 +229,14 @@
       </div>
       <table>
         <thead>
-          <tr>
-            <th>Менеджер</th>
-            <th>Офіс</th>
-            <th>Літри</th>
-            <th>Угоди</th>
-            <th>Нові заправки</th>
-            <th>Перемоги</th>
-          </tr>
+        <tr>
+          <th>Менеджер</th>
+          <th>Офіс</th>
+          <th>Літри</th>
+          <th>Угоди</th>
+          <th>Нові заправки</th>
+          <th>Перемоги</th>
+        </tr>
         </thead>
         <tbody id="manager-table-body"></tbody>
       </table>
@@ -237,16 +247,15 @@
       <div class="section-title" style="margin-bottom: 12px;">Лідерборд менеджерів</div>
       <table>
         <thead>
-          <tr>
-            <th class="medal-cell">Місце</th>
-            <th>Менеджер</th>
-            <th>Офіс</th>
-            <th>Літри</th>
-            <th>Угоди</th>
-            <th>Нові заправки</th>
-            <th>Перемоги</th>
-            <th>Бали</th>
-          </tr>
+        <tr>
+          <th class="medal-cell">Місце</th>
+          <th>Менеджер</th>
+          <th>Офіс</th>
+          <th>Літри</th>
+          <th>Угоди</th>
+          <th>Нові заправки</th>
+          <th>Перемоги</th>
+        </tr>
         </thead>
         <tbody id="leaderboard-body"></tbody>
       </table>
@@ -254,102 +263,176 @@
   </div>
 
   <script>
-    // 🔑 Твій Apps Script endpoint
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwGy12XHZZIWrXOA5-nRRURXfTCOJDkP1U_iuIzaPworQqq1CEDCKCh4YVNsSGHfvL-/exec';
+    // 🔑 API endpoint
+    var API_URL = 'https://script.google.com/macros/s/AKfycbwGy12XHZZIWrXOA5-nRRURXfTCOJDkP1U_iuIzaPworQqq1CEDCKCh4YVNsSGHfvL-/exec';
 
-    let MANAGERS_DATA = [];
-    let currentMonth = 'Листопад';
-    let currentSort = 'liters';
+    var currentSort = 'liters';
+    var currentMonth = 'Листопад';
+    var MANAGERS_DATA = [];
+
+    function safeNumber(x) {
+      var n = Number(x);
+      return isNaN(n) ? 0 : n;
+    }
 
     function formatNumber(num) {
-      if (num === null || num === undefined || isNaN(num)) return '0';
-      return Number(num).toLocaleString('uk-UA');
+      return safeNumber(num).toLocaleString('uk-UA');
     }
 
-    function getFills(m) {
-      let v = 0;
-      if (m && m.newFills !== undefined && m.newFills !== null) {
-        v = m.newFills;
-      } else if (m && m.newFuels !== undefined && m.newFuels !== null) {
-        v = m.newFuels;
+    // -------- Агреговані тотали + попередній місяць --------
+    function getPrevFromChange(currentVal, changePct) {
+      if (changePct === null || changePct === undefined || isNaN(changePct)) return null;
+      if (changePct <= -100) return 0;
+      return currentVal / (1 + changePct / 100);
+    }
+
+    function cardAggregateChange(current, prev) {
+      if (!prev || prev <= 0) return null;
+      return ( (current - prev) / prev ) * 100;
+    }
+
+    function calcTotals(data) {
+      var totalLiters = 0, totalLitersPrev = 0;
+      var totalDeals  = 0, totalDealsPrev  = 0;
+      var totalFills  = 0, totalFillsPrev  = 0;
+
+      for (var i = 0; i < data.length; i++) {
+        var m = data[i];
+
+        // liters
+        var curL = safeNumber(m.liters);
+        totalLiters += curL;
+        var lChange = null;
+        if (typeof m.litersChangePct === 'number') lChange = m.litersChangePct;
+        else if (m.change && typeof m.change.liters === 'number') lChange = m.change.liters;
+        var prevL = getPrevFromChange(curL, lChange);
+        if (prevL !== null) totalLitersPrev += prevL;
+
+        // deals
+        var curD = safeNumber(m.deals);
+        totalDeals += curD;
+        var dChange = null;
+        if (typeof m.dealsChangePct === 'number') dChange = m.dealsChangePct;
+        else if (m.change && typeof m.change.deals === 'number') dChange = m.change.deals;
+        var prevD = getPrevFromChange(curD, dChange);
+        if (prevD !== null) totalDealsPrev += prevD;
+
+        // fills (нові заправки)
+        var curF = safeNumber(m.newFills || m.newFuels);
+        totalFills += curF;
+        var fChange = null;
+        if (typeof m.newFillsChangePct === 'number') fChange = m.newFillsChangePct;
+        else if (m.change && typeof m.change.newFuels === 'number') fChange = m.change.newFuels;
+        var prevF = getPrevFromChange(curF, fChange);
+        if (prevF !== null) totalFillsPrev += prevF;
       }
-      return Number(v) || 0;
+
+      return {
+        totalLiters: totalLiters,
+        totalLitersPrev: totalLitersPrev,
+        totalDeals: totalDeals,
+        totalDealsPrev: totalDealsPrev,
+        totalFills: totalFills,
+        totalFillsPrev: totalFillsPrev,
+        managerCount: data.length
+      };
     }
 
-    function calcMetrics(data) {
-      const totalLiters = data.reduce((sum, m) => sum + (Number(m.liters) || 0), 0);
-      const totalDeals = data.reduce((sum, m) => sum + (Number(m.deals) || 0), 0);
-      const avgLitersPerDeal = totalDeals > 0 ? totalLiters / totalDeals : 0;
-      const managerCount = data.length;
-      return { totalLiters, totalDeals, avgLitersPerDeal, managerCount };
+    function renderCardDelta(elementId, pct) {
+      var el = document.getElementById(elementId);
+      if (!el) return;
+      if (pct === null || pct === undefined || isNaN(pct)) {
+        el.textContent = '';
+        el.className = 'card-delta';
+        return;
+      }
+      var sign = pct > 0 ? '+' : '';
+      el.textContent = sign + pct.toFixed(1) + '%';
+      el.className = 'card-delta ' + (pct > 0 ? 'positive' : 'negative');
     }
 
     function renderTopCards(data) {
-      const metrics = calcMetrics(data);
+      var t = calcTotals(data);
+
       document.getElementById('total-liters').textContent =
-        formatNumber(metrics.totalLiters) + ' л';
+        formatNumber(t.totalLiters) + ' л';
       document.getElementById('total-deals').textContent =
-        formatNumber(metrics.totalDeals);
-      document.getElementById('avg-liters-per-deal').textContent =
-        metrics.avgLitersPerDeal.toFixed(0) + ' л';
-      document.getElementById('manager-count').textContent =
-        metrics.managerCount;
+        formatNumber(t.totalDeals);
+      document.getElementById('total-fills').textContent =
+        formatNumber(t.totalFills);
+      document.getElementById('manager-count').textContent = t.managerCount;
+
+      renderCardDelta(
+        'total-liters-delta',
+        cardAggregateChange(t.totalLiters, t.totalLitersPrev)
+      );
+      renderCardDelta(
+        'total-deals-delta',
+        cardAggregateChange(t.totalDeals, t.totalDealsPrev)
+      );
+      renderCardDelta(
+        'total-fills-delta',
+        cardAggregateChange(t.totalFills, t.totalFillsPrev)
+      );
     }
 
+    // --------- Таблиця результатів ---------
     function getSortedData(data, sortKey) {
-      const arr = data.slice();
-      if (sortKey === 'liters') {
-        arr.sort((a, b) => (Number(b.liters) || 0) - (Number(a.liters) || 0));
-      } else if (sortKey === 'deals') {
-        arr.sort((a, b) => (Number(b.deals) || 0) - (Number(a.deals) || 0));
-      } else if (sortKey === 'fills') {
-        arr.sort((a, b) => getFills(b) - getFills(a));
-      }
+      var arr = data.slice();
+      arr.sort(function(a, b) {
+        if (sortKey === 'liters') {
+          return safeNumber(b.liters) - safeNumber(a.liters);
+        } else if (sortKey === 'deals') {
+          return safeNumber(b.deals) - safeNumber(a.deals);
+        } else if (sortKey === 'fills') {
+          var af = safeNumber(a.newFills || a.newFuels);
+          var bf = safeNumber(b.newFills || b.newFuels);
+          return bf - af;
+        }
+        return 0;
+      });
       return arr;
     }
 
     function pickDelta(obj, field) {
       if (!obj) return null;
-
-      // варіант 1: окреме поле типу litersChangePct
-      if (obj[field] !== undefined && obj[field] !== null &&
-          typeof obj[field] === 'number') {
-        return obj[field];
-      }
-
-      // варіант 2: obj.change.liters
-      if (obj.change && obj.change[field] !== undefined &&
-          obj.change[field] !== null &&
-          typeof obj.change[field] === 'number') {
-        return obj.change[field];
-      }
-
+      if (typeof obj[field] === 'number') return obj[field];
+      if (obj.change && typeof obj.change[field] === 'number') return obj.change[field];
       return null;
     }
 
     function formatDelta(pct) {
       if (pct === null || pct === undefined || isNaN(pct)) return '';
-      const sign = pct > 0 ? '+' : '';
-      const cls = pct > 0 ? 'delta positive' : 'delta negative';
+      var sign = pct > 0 ? '+' : '';
+      var cls = pct > 0 ? 'delta positive' : 'delta negative';
       return '<span class="' + cls + '">' + sign + pct.toFixed(1) + '%</span>';
     }
 
-    function renderResultsTable(data) {
-      const tbody = document.getElementById('manager-table-body');
+    function renderTable(data) {
+      var tbody = document.getElementById('manager-table-body');
       tbody.innerHTML = '';
 
       for (var i = 0; i < data.length; i++) {
         var m = data[i];
 
-        var litersDelta = pickDelta(m, 'litersChangePct') || pickDelta(m, 'liters');
-        var dealsDelta  = pickDelta(m, 'dealsChangePct')  || pickDelta(m, 'deals');
-        var fillsDelta  = pickDelta(m, 'newFillsChangePct') || pickDelta(m, 'newFuels');
-        var winsDelta   = pickDelta(m, 'winsChangePct')   || pickDelta(m, 'wins');
+        var litersDelta = pickDelta(m, 'litersChangePct');
+        if (litersDelta === null) litersDelta = pickDelta(m, 'liters');
+        var dealsDelta  = pickDelta(m, 'dealsChangePct');
+        if (dealsDelta === null) dealsDelta = pickDelta(m, 'deals');
+        var fillsDelta  = pickDelta(m, 'newFillsChangePct');
+        if (fillsDelta === null) fillsDelta = pickDelta(m, 'newFuels');
+        var winsDelta   = pickDelta(m, 'winsChangePct');
+        if (winsDelta === null) winsDelta = pickDelta(m, 'wins');
 
-        var litersCell = formatNumber(m.liters || 0) + ' л ' + formatDelta(litersDelta);
-        var dealsCell  = formatNumber(m.deals || 0) + ' ' + formatDelta(dealsDelta);
-        var fillsCell  = formatNumber(getFills(m)) + ' ' + formatDelta(fillsDelta);
-        var winsCell   = formatNumber(m.wins || 0) + ' ' + formatDelta(winsDelta);
+        var litersCell =
+          formatNumber(m.liters) + ' л ' + formatDelta(litersDelta);
+        var dealsCell =
+          formatNumber(m.deals) + ' ' + formatDelta(dealsDelta);
+        var fillsValue = safeNumber(m.newFills || m.newFuels);
+        var fillsCell =
+          formatNumber(fillsValue) + ' ' + formatDelta(fillsDelta);
+        var winsCell =
+          formatNumber(m.wins) + ' ' + formatDelta(winsDelta);
 
         var tr = document.createElement('tr');
         tr.innerHTML =
@@ -363,62 +446,83 @@
       }
     }
 
-    // ==== ЛІДЕРБОРД ====
+    // ------- ЛІДЕРБОРД З БАЛАМИ -------
+    function computeLeaderboard(data) {
+      if (!data || !data.length) return [];
 
-    // Бальна система:
-    // score = liters/100 + deals*5 + fills*20 + wins*50
-    function computeScore(m) {
-      var liters = Number(m.liters) || 0;
-      var deals  = Number(m.deals) || 0;
-      var fills  = getFills(m);
-      var wins   = Number(m.wins) || 0;
-      return liters / 100 + deals * 5 + fills * 20 + wins * 50;
+      var maxLiters = 0, maxDeals = 0, maxFills = 0, maxWins = 0;
+      for (var i = 0; i < data.length; i++) {
+        maxLiters = Math.max(maxLiters, safeNumber(data[i].liters));
+        maxDeals  = Math.max(maxDeals,  safeNumber(data[i].deals));
+        maxFills  = Math.max(maxFills,  safeNumber(data[i].newFills || data[i].newFuels));
+        maxWins   = Math.max(maxWins,   safeNumber(data[i].wins));
+      }
+
+      var wLiters = 4, wDeals = 3, wFills = 2, wWins = 1;
+
+      var arr = [];
+      for (var j = 0; j < data.length; j++) {
+        var m = data[j];
+        var litersNorm = maxLiters ? safeNumber(m.liters) / maxLiters : 0;
+        var dealsNorm  = maxDeals  ? safeNumber(m.deals)  / maxDeals  : 0;
+        var fillsNorm  = maxFills  ? safeNumber(m.newFills || m.newFuels) / maxFills : 0;
+        var winsNorm   = maxWins   ? safeNumber(m.wins)   / maxWins   : 0;
+
+        var score = litersNorm * wLiters +
+                    dealsNorm  * wDeals  +
+                    fillsNorm  * wFills  +
+                    winsNorm   * wWins;
+
+        var copy = {};
+        for (var key in m) copy[key] = m[key];
+        copy.score = score;
+        arr.push(copy);
+      }
+
+      arr.sort(function(a, b) { return b.score - a.score; });
+      return arr;
     }
 
     function renderLeaderboard(data) {
       var tbody = document.getElementById('leaderboard-body');
       tbody.innerHTML = '';
 
-      var arr = data.slice();
-      for (var i = 0; i < arr.length; i++) {
-        arr[i].score = computeScore(arr[i]);
-      }
-      arr.sort(function(a, b) { return b.score - a.score; });
+      var ranked = computeLeaderboard(data);
 
-      for (var j = 0; j < arr.length; j++) {
-        var m = arr[j];
-        var place = j + 1;
+      for (var i = 0; i < ranked.length; i++) {
+        var m = ranked[i];
+        var place = i + 1;
         var medal = '';
-        if (place === 1) medal = '🥇';
-        else if (place === 2) medal = '🥈';
-        else if (place === 3) medal = '🥉';
+        if (i === 0) medal = '🥇';
+        else if (i === 1) medal = '🥈';
+        else if (i === 2) medal = '🥉';
 
         var tr = document.createElement('tr');
         tr.innerHTML =
           '<td class="medal-cell">' +
             '<span class="rank-badge">' + place + '</span> ' + medal +
+            '<span class="score-pill">' + Math.round(m.score * 100) + ' балів</span>' +
           '</td>' +
           '<td>' + (m.name || '') + '</td>' +
           '<td>' + (m.office || '') + '</td>' +
-          '<td>' + formatNumber(m.liters || 0) + ' л</td>' +
-          '<td>' + formatNumber(m.deals || 0) + '</td>' +
-          '<td>' + formatNumber(getFills(m)) + '</td>' +
-          '<td>' + formatNumber(m.wins || 0) + '</td>' +
-          '<td>' + m.score.toFixed(1) + '</td>';
+          '<td>' + formatNumber(m.liters) + ' л</td>' +
+          '<td>' + formatNumber(m.deals) + '</td>' +
+          '<td>' + formatNumber(m.newFills || m.newFuels) + '</td>' +
+          '<td>' + formatNumber(m.wins) + '</td>';
         tbody.appendChild(tr);
       }
     }
 
-    // ==== РЕНДЕР ВСЬОГО ====
-
+    // ------- РЕНДЕР ВСЬОГО -------
     function renderAll() {
       var sorted = getSortedData(MANAGERS_DATA, currentSort);
       renderTopCards(sorted);
-      renderResultsTable(sorted);
+      renderTable(sorted);
       renderLeaderboard(MANAGERS_DATA);
     }
 
-    async function loadData(month) {
+    // ------- ЗАВАНТАЖЕННЯ ДАНИХ -------
+    function loadData(month) {
       currentMonth = month;
       var errorBox = document.getElementById('error-box');
       errorBox.style.display = 'none';
@@ -426,45 +530,45 @@
 
       var url = API_URL + '?month=' + encodeURIComponent(month);
 
-      try {
-        var res = await fetch(url);
-        var text = await res.text();
+      fetch(url)
+        .then(function(res) { return res.text(); })
+        .then(function(text) {
+          var data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            console.error('JSON parse error:', text);
+            throw new Error('Невірний формат відповіді API');
+          }
 
-        var data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error('JSON parse error:', text);
-          throw new Error('Невірний формат відповіді API');
-        }
+          if (!Array.isArray(data)) {
+            console.error('API повернув не масив:', data);
+            throw new Error('API повернув помилку або неочікувані дані');
+          }
 
-        if (!Array.isArray(data)) {
-          console.error('API не повернув масив:', data);
-          throw new Error('API повернув помилку або неочікувані дані');
-        }
-
-        MANAGERS_DATA = data;
-        renderAll();
-      } catch (err) {
-        console.error('Помилка API:', err);
-        errorBox.textContent =
-          'Помилка завантаження даних з API. Перевір Apps Script або доступ до таблиці.';
-        errorBox.style.display = 'block';
-        MANAGERS_DATA = [];
-        renderAll();
-      }
+          MANAGERS_DATA = data;
+          renderAll();
+        })
+        .catch(function(err) {
+          console.error('Помилка завантаження з API:', err);
+          errorBox.textContent =
+            'Помилка завантаження даних з API. Перевір Apps Script або доступ до таблиці.';
+          errorBox.style.display = 'block';
+          MANAGERS_DATA = [];
+          renderAll();
+        });
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
       var sortSelect = document.getElementById('sort-select');
-      sortSelect.addEventListener('change', function (e) {
+      sortSelect.addEventListener('change', function(e) {
         currentSort = e.target.value;
         renderAll();
       });
 
       var monthSelect = document.getElementById('month-select');
       monthSelect.value = currentMonth;
-      monthSelect.addEventListener('change', function (e) {
+      monthSelect.addEventListener('change', function(e) {
         loadData(e.target.value);
       });
 
