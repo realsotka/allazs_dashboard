@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Кабінет менеджера</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: #0b0b0f;
+      color: #f5f5f5;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 32px;
+    }
+
+    a { color: #8ab4ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .layout { max-width: 900px; margin: 0 auto; }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .back-link {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .cabinet-main-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cabinet-name {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .cabinet-subinfo {
+      font-size: 13px;
+      opacity: 0.75;
+    }
+
+    .cards-row {
+      display: flex;
+      gap: 16px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #12121c;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 14px 16px;
+      flex: 1 1 220px;
+    }
+
+    .card-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 4px;
+      letter-spacing: 0.07em;
+    }
+
+    .card-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .card-small {
+      font-size: 12px;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    .section {
+      background: #101018;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    thead {
+      background: rgba(255,255,255,0.04);
+    }
+
+    .mini-label {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 6px;
+    }
+
+    .mini-value {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .error-message {
+      color: #ff6666;
+      font-size: 13px;
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+    <div class="top-bar">
+      <div class="cabinet-main-info">
+        <div class="cabinet-name" id="cabinet-name">Менеджер</div>
+        <div class="cabinet-subinfo" id="cabinet-office">Офіс</div>
+        <div class="cabinet-subinfo" id="cabinet-month">Місяць</div>
+      </div>
+      <div class="back-link">
+        <a href="index.html" target="_self">← Повернутися до дашборду</a>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <div class="card">
+        <div class="card-title">Сумарні бали</div>
+        <div class="card-value" id="cabinet-points">—</div>
+        <div class="card-small">Розраховано за літрами, угодами, новими заправками та перемогами.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Літри / угоди</div>
+        <div class="card-value" id="cabinet-liters-deals">—</div>
+        <div class="card-small" id="cabinet-liters-deals-sub">—</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">План / факт за місяць</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Метрика</th>
+            <th>План</th>
+            <th>Факт</th>
+            <th>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Літри</td>
+            <td id="plan-liters">—</td>
+            <td id="fact-liters">—</td>
+            <td id="pct-liters">—</td>
+          </tr>
+          <tr>
+            <td>Угоди</td>
+            <td id="plan-deals">—</td>
+            <td id="fact-deals">—</td>
+            <td id="pct-deals">—</td>
+          </tr>
+          <tr>
+            <td>Нові заправки</td>
+            <td id="plan-fills">—</td>
+            <td id="fact-fills">—</td>
+            <td id="pct-fills">—</td>
+          </tr>
+          <tr>
+            <td>Перемоги</td>
+            <td id="plan-wins">—</td>
+            <td id="fact-wins">—</td>
+            <td id="pct-wins">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Статистика дзвінків</div>
+
+      <div class="mini-label">Усього дзвінків</div>
+      <div class="mini-value" id="calls-total">—</div>
+
+      <div class="mini-label">Успішні / пропущені</div>
+      <div class="mini-value" id="calls-success">—</div>
+
+      <div class="mini-label">Середня тривалість розмови</div>
+      <div class="mini-value" id="calls-avg">—</div>
+
+      <div class="mini-label">Загальна тривалість розмов</div>
+      <div class="mini-value" id="calls-total-duration">—</div>
+
+      <div class="mini-label" id="calls-note" style="font-size:11px; opacity:0.7; margin-top:10px;">
+        Підключення до телефонії ще не налаштовано.
+      </div>
+    </div>
+
+    <div id="error-box" class="error-message" style="display:none;"></div>
+  </div>
+
+  <script>
+    // API Google Sheets
+    var API_URL = 'https://script.google.com/macros/s/AKfycbwGy12XHZZIWrXOA5-nRRURXfTCOJDkP1U_iuIzaPworQqq1CEDCKCh4YVNsSGHfvL-/exec';
+    // API телефонії (пізніше сюди поставимо Apps Script-проксі)
+    var CALLS_API_URL = '';
+
+    var MANAGERS_DATA = [];
+    var managerName = '';
+    var currentMonth = 'Листопад';
+
+    function safeNumber(x) {
+      var n = Number(x);
+      return isNaN(n) ? 0 : n;
+    }
+
+    function formatNumber(num) {
+      return safeNumber(num).toLocaleString('uk-UA');
+    }
+
+    function pctFromPlan(plan, fact) {
+      plan = safeNumber(plan);
+      fact = safeNumber(fact);
+      if (!plan) return '—';
+      var pct = (fact / plan) * 100;
+      return pct.toFixed(1) + '%';
+    }
+
+    function computeLeaderboard(data) {
+      if (!data || !data.length) return [];
+
+      var maxLiters = 0, maxDeals = 0, maxFills = 0, maxWins = 0;
+      for (var i = 0; i < data.length; i++) {
+        maxLiters = Math.max(maxLiters, safeNumber(data[i].liters));
+        maxDeals  = Math.max(maxDeals,  safeNumber(data[i].deals));
+        maxFills  = Math.max(maxFills,  safeNumber(data[i].newFills || data[i].newFuels));
+        maxWins   = Math.max(maxWins,   safeNumber(data[i].wins));
+      }
+
+      var wLiters = 4, wDeals = 3, wFills = 2, wWins = 1;
+      var arr = [];
+
+      for (var j = 0; j < data.length; j++) {
+        var m = data[j];
+        var litersNorm = maxLiters ? safeNumber(m.liters) / maxLiters : 0;
+        var dealsNorm  = maxDeals  ? safeNumber(m.deals)  / maxDeals  : 0;
+        var fillsNorm  = maxFills  ? safeNumber(m.newFills || m.newFuels) / maxFills : 0;
+        var winsNorm   = maxWins   ? safeNumber(m.wins)   / maxWins   : 0;
+
+        var score = litersNorm * wLiters +
+                    dealsNorm  * wDeals  +
+                    fillsNorm  * wFills  +
+                    winsNorm   * wWins;
+
+        var copy = {};
+        for (var key in m) copy[key] = m[key];
+        copy.score = score;
+        arr.push(copy);
+      }
+
+      arr.sort(function(a, b) { return b.score - a.score; });
+      return arr;
+    }
+
+    function renderCabinet(manager) {
+      if (!manager) return;
+
+      document.getElementById('cabinet-name').textContent =
+        manager.name || managerName || '';
+      document.getElementById('cabinet-office').textContent =
+        'Офіс: ' + (manager.office || '—');
+      document.getElementById('cabinet-month').textContent =
+        'Місяць: ' + currentMonth;
+
+      // Літри / угоди
+      var liters = safeNumber(manager.liters);
+      var deals  = safeNumber(manager.deals);
+      document.getElementById('cabinet-liters-deals').textContent =
+        formatNumber(liters) + ' л / ' + formatNumber(deals) + ' угод';
+      document.getElementById('cabinet-liters-deals-sub').textContent =
+        'Нові заправки: ' +
+        formatNumber(manager.newFills || manager.newFuels) +
+        ', перемоги: ' + formatNumber(manager.wins);
+
+      // Бали
+      var ranked = computeLeaderboard(MANAGERS_DATA);
+      var scoreObj = ranked.find(function(m) {
+        return (m.name || '').trim() === (manager.name || '').trim();
+      });
+      var score = scoreObj ? Math.round(scoreObj.score * 100) : 0;
+      document.getElementById('cabinet-points').textContent =
+        score ? score : '—';
+
+      // План / факт (якщо планові поля зʼявляться в таблиці)
+      var planLiters = safeNumber(manager.planLiters);
+      var planDeals  = safeNumber(manager.planDeals);
+      var planFills  = safeNumber(manager.planFills);
+      var planWins   = safeNumber(manager.planWins);
+
+      var factLiters = liters;
+      var factDeals  = deals;
+      var factFills  = safeNumber(manager.newFills || manager.newFuels);
+      var factWins   = safeNumber(manager.wins);
+
+      document.getElementById('plan-liters').textContent =
+        planLiters ? formatNumber(planLiters) + ' л' : '—';
+      document.getElementById('fact-liters').textContent =
+        formatNumber(factLiters) + ' л';
+      document.getElementById('pct-liters').textContent =
+        pctFromPlan(planLiters, factLiters);
+
+      document.getElementById('plan-deals').textContent =
+        planDeals ? formatNumber(planDeals) : '—';
+      document.getElementById('fact-deals').textContent =
+        formatNumber(factDeals);
+      document.getElementById('pct-deals').textContent =
+        pctFromPlan(planDeals, factDeals);
+
+      document.getElementById('plan-fills').textContent =
+        planFills ? formatNumber(planFills) : '—';
+      document.getElementById('fact-fills').textContent =
+        formatNumber(factFills);
+      document.getElementById('pct-fills').textContent =
+        pctFromPlan(planFills, factFills);
+
+      document.getElementById('plan-wins').textContent =
+        planWins ? formatNumber(planWins) : '—';
+      document.getElementById('fact-wins').textContent =
+        formatNumber(factWins);
+      document.getElementById('pct-wins').textContent =
+        pctFromPlan(planWins, factWins);
+
+      // Поки немає API телефонії — показуємо заглушку
+      renderCallStats(null);
+    }
+
+    function renderCallStats(stats) {
+      if (!stats) {
+        document.getElementById('calls-total').textContent = '—';
+        document.getElementById('calls-success').textContent = '—';
+        document.getElementById('calls-avg').textContent = '—';
+        document.getElementById('calls-total-duration').textContent = '—';
+        document.getElementById('calls-note').textContent =
+          'Підключення до телефонії ще не налаштовано.';
+        return;
+      }
+
+      document.getElementById('calls-total').textContent =
+        formatNumber(stats.totalCalls || 0);
+      document.getElementById('calls-success').textContent =
+        formatNumber(stats.answeredCalls || 0) +
+        ' / ' +
+        formatNumber(stats.missedCalls || 0);
+      document.getElementById('calls-avg').textContent =
+        (stats.avgTalkTime || '—');
+      document.getElementById('calls-total-duration').textContent =
+        (stats.totalTalkTime || '—');
+      document.getElementById('calls-note').textContent =
+        'Дані дзвінків завантажені з телефонії.';
+    }
+
+    function loadData() {
+      var errorBox = document.getElementById('error-box');
+      errorBox.style.display = 'none';
+      errorBox.textContent = '';
+
+      var url = API_URL + '?month=' + encodeURIComponent(currentMonth);
+
+      fetch(url)
+        .then(function(res) { return res.text(); })
+        .then(function(text) {
+          var data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            console.error('JSON parse error:', text);
+            throw new Error('Невірний формат відповіді API');
+          }
+
+          if (!Array.isArray(data)) {
+            console.error('API повернув не масив:', data);
+            throw new Error('API повернув помилку або неочікувані дані');
+          }
+
+          MANAGERS_DATA = data;
+          var manager = MANAGERS_DATA.find(function(m) {
+            return (m.name || '').trim() === managerName.trim();
+          });
+
+          if (!manager) {
+            errorBox.textContent =
+              'Менеджера "' + managerName + '" не знайдено у даних за цей місяць.';
+            errorBox.style.display = 'block';
+            return;
+          }
+
+          renderCabinet(manager);
+
+          // якщо зʼявиться CALLS_API_URL — можна буде підтягувати дзвінки:
+          // loadCallStats(manager);
+        })
+        .catch(function(err) {
+          console.error('Помилка завантаження з API:', err);
+          errorBox.textContent =
+            'Помилка завантаження даних з API. Перевір Apps Script або доступ до таблиці.';
+          errorBox.style.display = 'block';
+        });
+    }
+
+    function parseParams() {
+      var params = new URLSearchParams(window.location.search);
+      managerName = (params.get('name') || '').trim();
+      currentMonth = params.get('month') || 'Листопад';
+
+      if (!managerName) {
+        var errorBox = document.getElementById('error-box');
+        errorBox.textContent = 'Не передано імʼя менеджера в URL.';
+        errorBox.style.display = 'block';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      parseParams();
+      loadData();
+    });
+  </script>
+</body>
+</html>
