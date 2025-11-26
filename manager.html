@@ -103,6 +103,44 @@
       font-size: 14px;
       color: #fca5a5;
     }
+
+    /* 🔥 Блок телефонії */
+    .phone-stats {
+      margin-top: 8px;
+    }
+    .phone-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .phone-card {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    .phone-period {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #e5e7eb;
+    }
+    .phone-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 3px;
+      color: #9ca3af;
+    }
+    .phone-row span {
+      opacity: 0.9;
+    }
+    .phone-row b {
+      color: #f9fafb;
+      font-weight: 600;
+    }
+
     @media (max-width: 640px) {
       .top-bar {
         flex-direction: column;
@@ -157,13 +195,12 @@
       </table>
     </div>
 
+    <!-- 🔥 НОВИЙ ЖИВИЙ БЛОК ТЕЛЕФОНІЇ -->
     <div class="card" style="margin-top: 24px;">
       <div class="section-title">Статистика дзвінків</div>
-      <p class="muted">
-        Поки що інтеграція з телефонією не налаштована. Коли підключимо API телефонії,
-        тут зʼявиться статистика: загальна кількість дзвінків, успішні / пропущені,
-        середня та загальна тривалість розмов.
-      </p>
+      <div id="phone-stats" class="phone-stats muted">
+        Завантаження статистики телефонії...
+      </div>
     </div>
 
     <div id="error-box" class="error" style="display:none;"></div>
@@ -200,6 +237,17 @@
       const f = Number(fact) || 0;
       if (!p) return '—';
       return formatPercent((f / p) * 100);
+    }
+
+    // 🔥 Форматування тривалості дзвінків
+    function formatCallTime(sec) {
+      sec = Number(sec) || 0;
+      const minutes = Math.floor(sec / 60);
+      const seconds = Math.floor(sec % 60);
+      if (!minutes && !seconds) return '0 с';
+      if (!minutes) return `${seconds} с`;
+      if (!seconds) return `${minutes} хв`;
+      return `${minutes} хв ${seconds} с`;
     }
 
     function computeLeaderboardScores(data) {
@@ -316,6 +364,74 @@
           tr.appendChild(tdPercent);
           tbody.appendChild(tr);
         });
+
+        // 🔥 Рендер телефонії
+        const phoneStatsEl = document.getElementById('phone-stats');
+
+        const callsToday      = safeNumber(mgr.callsToday);
+        const totalTodaySec   = safeNumber(mgr.totalTodaySec);
+        const avgTodaySec     = safeNumber(mgr.avgTodaySec);
+
+        const callsWeek       = safeNumber(mgr.callsWeek);
+        const totalWeekSec    = safeNumber(mgr.totalWeekSec);
+        const avgWeekSec      = safeNumber(mgr.avgWeekSec);
+
+        const callsMonth      = safeNumber(mgr.callsMonth);
+        const totalMonthSec   = safeNumber(mgr.totalMonthSec);
+        const avgMonthSec     = safeNumber(mgr.avgMonthSec);
+
+        phoneStatsEl.classList.remove('muted');
+        phoneStatsEl.innerHTML = `
+          <div class="phone-grid">
+            <div class="phone-card">
+              <div class="phone-period">Сьогодні</div>
+              <div class="phone-row">
+                <span>Дзвінків</span>
+                <b>${callsToday}</b>
+              </div>
+              <div class="phone-row">
+                <span>Час розмов</span>
+                <b>${formatCallTime(totalTodaySec)}</b>
+              </div>
+              <div class="phone-row">
+                <span>Середня тривалість</span>
+                <b>${formatCallTime(avgTodaySec)}</b>
+              </div>
+            </div>
+
+            <div class="phone-card">
+              <div class="phone-period">Тиждень</div>
+              <div class="phone-row">
+                <span>Дзвінків</span>
+                <b>${callsWeek}</b>
+              </div>
+              <div class="phone-row">
+                <span>Час розмов</span>
+                <b>${formatCallTime(totalWeekSec)}</b>
+              </div>
+              <div class="phone-row">
+                <span>Середня тривалість</span>
+                <b>${formatCallTime(avgWeekSec)}</b>
+              </div>
+            </div>
+
+            <div class="phone-card">
+              <div class="phone-period">Місяць</div>
+              <div class="phone-row">
+                <span>Дзвінків</span>
+                <b>${callsMonth}</b>
+              </div>
+              <div class="phone-row">
+                <span>Час розмов</span>
+                <b>${formatCallTime(totalMonthSec)}</b>
+              </div>
+              <div class="phone-row">
+                <span>Середня тривалість</span>
+                <b>${formatCallTime(avgMonthSec)}</b>
+              </div>
+            </div>
+          </div>
+        `;
 
       } catch (err) {
         console.error(err);
